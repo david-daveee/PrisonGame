@@ -1,0 +1,5 @@
+# NPC
+
+## Relationships
+
+## Factions
