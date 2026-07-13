@@ -5,7 +5,7 @@ public class WorldItem : MonoBehaviour, IInteractable
     [SerializeField] private ItemData itemData;
 
     [SerializeField, Min(1)]
-    private int amount = 1;
+    private int initialAmount = 1;
 
     private InventoryItem inventoryItem;
 
@@ -22,18 +22,17 @@ public class WorldItem : MonoBehaviour, IInteractable
             return;
         }
 
-        inventoryItem = new InventoryItem(itemData, amount);
+        inventoryItem = new InventoryItem(itemData, initialAmount);
     }
+
     public void Interact(PlayerInteractor interactor)
     {
         PlayerInventory playerInventory = interactor.GetInventory();
 
-        if (playerInventory == null || itemData == null)
+        if (playerInventory == null || inventoryItem == null)
         {
             return;
         }
-
-        InventoryItem inventoryItem = new InventoryItem(itemData, 1);
 
         if (playerInventory.TryAddItem(inventoryItem))
         {
