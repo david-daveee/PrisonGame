@@ -19279,7 +19279,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::InventoryUI
   inventoryRoot: {fileID: 623815325}
-  inventorySlots: []
+  inventorySlots:
+  - {fileID: 1480255519}
+  - {fileID: 668438841}
+  - {fileID: 1843530027}
+  - {fileID: 755480748}
+  - {fileID: 352553093}
+  - {fileID: 783685205}
+  - {fileID: 824604057}
+  - {fileID: 277742259}
 --- !u!114 &623815328
 MonoBehaviour:
   m_ObjectHideFlags: 0
