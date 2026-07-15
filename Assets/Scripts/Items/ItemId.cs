@@ -1,5 +1,9 @@
 public enum ItemId
 {
     Screwdriver,
-    Cigarettes
+    Cigarettes,
+    Book,
+    Soap,
+    Crowbar
+
 }

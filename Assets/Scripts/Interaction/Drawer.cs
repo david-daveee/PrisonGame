@@ -12,6 +12,9 @@ public class Drawer : MonoBehaviour, IInteractable
         MovingToClosed
     }
 
+    [Header("Inventory")]
+    [SerializeField] private ContainerInventory containerInventory;
+
     [SerializeField] private Transform cover;
     [SerializeField] private Transform closedPoint;
     [SerializeField] private Transform dropPoint;
@@ -27,6 +30,22 @@ public class Drawer : MonoBehaviour, IInteractable
 
     private DrawerState currentState = DrawerState.Closed;
 
+    private void OnEnable()
+    {
+        if (containerInventory != null)
+        {
+            containerInventory.Closed += HandleContainerClosed;
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (containerInventory != null)
+        {
+            containerInventory.Closed -= HandleContainerClosed;
+        }
+    }
+
     public void Interact(PlayerInteractor interactor)
     {
         switch (currentState)
@@ -37,6 +56,7 @@ public class Drawer : MonoBehaviour, IInteractable
                     return;
                 }
                 currentState = DrawerState.MovingToDrop;
+                containerInventory?.OpenFor(interactor);
                 break;
 
             case DrawerState.Opened:
@@ -55,7 +75,9 @@ public class Drawer : MonoBehaviour, IInteractable
                     return "Unscrew all bolts first";
                 }
 
-                return "Open Drawer";
+                return containerInventory != null
+                    ? $"Open {containerInventory.ContainerName}"
+                    : "Open Drawer";
 
             case DrawerState.Opened:
                 return "Close Drawer";
@@ -142,5 +164,20 @@ public class Drawer : MonoBehaviour, IInteractable
         }
 
         return true;
+    }
+
+    private void HandleContainerClosed()
+    {
+        switch (currentState)
+        {
+            case DrawerState.MovingToDrop:
+                currentState = DrawerState.MovingToClosed;
+                break;
+
+            case DrawerState.MovingToRemoved:
+            case DrawerState.Opened:
+                currentState = DrawerState.MovingBackToDrop;
+                break;
+        }
     }
 }

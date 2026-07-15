@@ -71,3 +71,84 @@ Professions unlock small home stations at meaningful trust thresholds.
 
 ### Reason
 The cell visibly reflects progression without replacing workplaces.
+
+---
+
+## 2026-07-15 — PlayerInventory owns grid state
+
+### Context
+The grid prototype previously existed only in a debug script while `PlayerInventory` stored a separate item list.
+
+### Decision
+`PlayerInventory` owns one `InventoryGrid`. Item positions and rotations live in `InventoryPlacement`; UI only displays and requests changes.
+
+### Reason
+A single source of truth prevents pickup, UI and future containers from disagreeing about inventory contents.
+
+### Consequences
+- `WorldItem` pickup is accepted only when the complete item or stack fits.
+- Drag/drop and rotation are validated by the gameplay model.
+- Future container inventories can implement `IGridInventory` and reuse `InventoryGrid` and the same UI presentation.
+
+### Rejected alternative
+Keep a list in `PlayerInventory` and a separate grid inside the UI/debug script.
+
+---
+
+## 2026-07-15 — Player and containers share GridInventory
+
+### Context
+Containers need the same placement, stack and capacity rules as the player inventory.
+
+### Decision
+Use the reusable non-MonoBehaviour `GridInventory` model behind both `PlayerInventory` and `ContainerInventory`.
+
+### Reason
+Transfers must be validated by identical rules on both sides, without copying storage logic into every container type.
+
+### Consequences
+- Container metadata and Unity interaction stay in `ContainerInventory`.
+- Storage rules stay in `GridInventory`.
+- `InventoryUI` can display both through `IGridInventory`.
+- Cross-grid movement is committed through `InventoryTransferService`, not by directly mutating both panels in UI code.
+- Detached placements remain registered by their source grid until a transfer or rollback is committed.
+
+### Rejected alternative
+Duplicate `PlayerInventory` logic in a cabinet-specific script.
+
+---
+
+## 2026-07-15 — Physical mechanisms own container interaction
+
+### Context
+When both the cabinet body and its drawer implemented `IInteractable`, the camera ray could open the inventory directly through the body and skip the drawer animation.
+
+### Decision
+`ContainerInventory` owns only storage data. `Drawer` and `Door` own world interaction, animation and the call to `ContainerInventory.OpenFor`.
+
+### Reason
+One collider hit maps to one visible physical action, and separate cabinet compartments keep independent contents.
+
+### Consequences
+- The cabinet body may keep a collision collider, but it must not intercept the interaction ray.
+- Every independently stored compartment connects its moving `Drawer` or `Door` to its own `ContainerInventory` in the Inspector.
+- A container is shared only when several mechanisms intentionally access exactly the same contents.
+- Future multiplayer authority can validate the interaction and container opening as one server action.
+
+---
+
+## 2026-07-15 — Generic containers use optional presentation hooks
+
+### Context
+Many world objects need storage, but not every box, mattress or cache has a door animation.
+
+### Decision
+Use `ContainerInteractable` as the reusable interaction component. It always opens a referenced `ContainerInventory`, while Animator triggers and Inspector events remain optional presentation hooks.
+
+### Reason
+Storage rules and interaction stay reusable without forcing every container to own a bespoke animation script.
+
+### Consequences
+- A static container needs only `ContainerInventory`, `ContainerInteractable` and a reachable collider.
+- An animated container may assign an Animator with `Open` and `Close` triggers.
+- Custom procedural presentation can subscribe through `On Opened` and `On Closed` without moving storage state into animation code.

@@ -23,4 +23,9 @@ public class PlayerInputHandler : MonoBehaviour
     {
         return inputActions.Player.Inventory.WasPressedThisFrame();
     }
+
+    public bool RotateInventoryItemPressedThisFrame()
+    {
+        return inputActions.Player.RotateInventoryItem.WasPressedThisFrame();
+    }
 }

@@ -60,4 +60,9 @@ public class PlayerInteractor : MonoBehaviour
     {
         return GetComponent<PlayerInventory>();
     }
+
+    public PlayerInventoryInput GetInventoryInput()
+    {
+        return GetComponent<PlayerInventoryInput>();
+    }
 }

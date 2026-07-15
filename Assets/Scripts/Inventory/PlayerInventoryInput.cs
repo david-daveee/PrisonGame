@@ -15,6 +15,12 @@ public class PlayerInventoryInput : MonoBehaviour
         {
             ToggleInventory();
         }
+
+        if (isInventoryOpen &&
+            playerInputHandler.RotateInventoryItemPressedThisFrame())
+        {
+            inventoryUI.RotateHoveredItem();
+        }
     }
 
     private void ToggleInventory()
@@ -31,6 +37,18 @@ public class PlayerInventoryInput : MonoBehaviour
         inventoryUI.Open(playerInventory);
         playerUIStateController.EnterUIMode();
 
+        isInventoryOpen = true;
+    }
+
+    public void OpenContainer(ContainerInventory container)
+    {
+        if (container == null || isInventoryOpen)
+        {
+            return;
+        }
+
+        inventoryUI.OpenContainer(playerInventory, container);
+        playerUIStateController.EnterUIMode();
         isInventoryOpen = true;
     }
 }

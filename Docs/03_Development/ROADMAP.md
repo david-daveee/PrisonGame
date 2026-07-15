@@ -16,23 +16,23 @@
 - [x] Unity Input System
 - [x] UI Mode
 - [x] Initial stack logic
-- [ ] Restore UI after InventoryItem refactor
-- [ ] Finish WorldItem instance handling
-- [ ] Icons
-- [ ] Amount display
+- [x] Restore UI after InventoryItem refactor
+- [x] Finish WorldItem instance handling
+- [x] Icons
+- [x] Amount display
 - [ ] Category background
 - [ ] Contraband marker
-- [ ] Grid sizes
-- [ ] Drag and drop
-- [ ] Rotation
+- [x] Grid sizes
+- [x] Drag and drop
+- [x] Rotation
 - [ ] Stack splitting
 - [ ] Drop into world
 
 ## Containers
-- [ ] ContainerInventory
-- [ ] Two-panel UI
-- [ ] Item transfer
-- [ ] Open/close animation
+- [x] ContainerInventory
+- [x] Two-panel UI
+- [x] Item transfer
+- [x] Open/close animation
 - [ ] Auto-close conditions
 - [ ] Distance checks
 - [ ] Multiplayer validation plan

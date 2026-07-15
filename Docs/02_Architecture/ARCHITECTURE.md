@@ -7,14 +7,16 @@ PlayerInputActions
 → PlayerInputHandler
 → PlayerInventoryInput
 → InventoryUI
-→ InventorySlotUI
+→ InventoryGridUI
+→ InventoryItemUI
 ```
 
 Data flow:
 
 ```text
 PlayerInventory
-→ IInventory
+→ InventoryGrid
+→ InventoryPlacement
 → InventoryUI reads data
 ```
 
@@ -49,8 +51,32 @@ bool HasItem(ItemId itemId, int amount = 1);
 IReadOnlyList<InventoryItem> GetItems();
 ```
 
+### IGridInventory
+Extends `IInventory` with an `InventoryGrid` and a change notification. `InventoryUI` depends on this contract so player and future container inventories can share the same grid presentation.
+
 ### PlayerInventory
-Stores `List<InventoryItem>` and handles stacking, adding, removing and counting.
+Unity-facing inventory component for the player. It delegates storage rules to `GridInventory`.
+
+### GridInventory
+Reusable non-MonoBehaviour storage model shared by players and containers. It handles atomic stacking, adding, removing and counting. If the complete incoming amount cannot fit, it does not change the inventory.
+
+### ContainerInventory
+Unity component with Inspector-configured name, description, grid size and starting items. It should live on the same GameObject as that compartment's `Drawer`, `Door` or `ContainerInteractable`, keeping all per-compartment settings visible together in the Inspector. It owns a `GridInventory`, but is deliberately not an `IInteractable`; the physical interaction component calls `OpenFor` for the exact player.
+
+### ContainerInteractable
+Reusable world interaction for ordinary containers. Adding it automatically adds the required `ContainerInventory`, exposing metadata and grid size beside it. It optionally drives an `Animator` with `Open` and `Close` triggers and plays separate open/close clips through an assigned `AudioSource`. Inspector events remain an extension point for other effects or procedural animation. All presentation fields are optional.
+
+### Drawer and Door
+Physical interaction components. They animate the moving part and can optionally reference a `ContainerInventory`. Closing that container's UI raises `Closed`, which returns the connected mechanism to its closed state. Each physical storage compartment should normally own a separate `ContainerInventory`; sharing one is reserved for multiple access points that intentionally expose the same contents.
+
+### InventoryTransferService
+Commits an atomic transfer of a detached placement from a verified source grid to a validated destination grid. This local service is the seam that a future authoritative server command will replace.
+
+### InventoryGrid
+Owns placements and validates bounds, overlap, movement and rotation. During drag it supports detach/attach as a transaction so the held item can rotate independently of its old grid position. It does not process input or render UI.
+
+### InventoryPlacement
+Connects one `InventoryItem` instance to a grid position and orientation.
 
 ### ItemData
 ScriptableObject describing an item type.
@@ -62,10 +88,13 @@ Concrete item instance or stack.
 World representation of a concrete instance.
 
 ### InventoryUI
-Displays any `IInventory`.
+Opens and closes inventory windows, subscribes to inventory changes and connects models to `InventoryGridUI`. Container mode displays the container grid on the left and player grid on the right. A shared topmost `DragLayer` keeps the temporary dragged visual above both panels without owning gameplay state.
 
-### InventorySlotUI
-Displays one item or slot.
+### InventoryGridUI
+Displays cells and placements. Converts pointer positions to grid positions, but delegates placement validation to `InventoryGrid`.
+
+### InventoryItemUI
+Displays one placement and reports pointer hover and drag/drop gestures to `InventoryGridUI`. Rotation input comes from `PlayerInputHandler`; `R` rotates the hovered placement.
 
 ### PlayerInteractor
 Finds `IInteractable` and calls `Interact(this)`.
@@ -118,11 +147,10 @@ Client requests action
 
 ## Intentionally postponed
 
+Future container transfer requests will contain the source inventory, destination inventory, item instance, requested position and rotation. The server must validate ownership and capacity before clients update presentation.
+
 - network serialization;
 - item factory;
-- inventory change events;
-- full grid placement;
-- drag and drop;
 - saving;
 - durability;
 - complex Player hierarchy;

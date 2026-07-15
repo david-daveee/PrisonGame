@@ -10,11 +10,11 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a58f8855354c468438dd331a84783d26, type: 3}
-  m_Name: Screwdriver
+  m_Name: Book
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
-  ItemId: 0
-  DisplayName: Screwdriver
-  Icon: {fileID: 21300000, guid: aa8ad8a7f4dd82644b54ceeb117153aa, type: 3}
-  Category: 0
-  Size: {x: 1, y: 1}
+  ItemId: 2
+  DisplayName: Book
+  Icon: {fileID: 21300000, guid: f87a311f6963aca478691ee0460cbfc9, type: 3}
+  Category: 5
+  Size: {x: 2, y: 2}
   MaxStack: 1

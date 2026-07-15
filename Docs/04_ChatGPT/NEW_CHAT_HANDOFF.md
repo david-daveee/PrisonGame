@@ -49,6 +49,10 @@ When the user writes **го**:
 - `ItemData` describes an item type.
 - `InventoryItem` represents a concrete item or stack.
 - `WorldItem` represents that instance in the world.
+- `PlayerInventory` owns its `InventoryGrid`.
+- Grid-based storage implements `IGridInventory` for shared UI support.
+- `InventoryPlacement` stores grid position and rotation.
+- UI requests moves; `InventoryGrid` validates them.
 - Item category controls background.
 - Contraband uses a separate marker.
 - There is no rarity-color system.
@@ -56,21 +60,39 @@ When the user writes **го**:
 
 ## Current state
 
-Current refactor:
+Current inventory flow:
 
 ```text
-List<ItemData> → List<InventoryItem>
+WorldItem
+→ PlayerInventory
+→ InventoryGrid / InventoryPlacement
+→ InventoryUI / InventoryGridUI
 ```
 
-Current bug: `Added: Screwdriver` appears in Console, but the name is not displayed.
+Implemented:
 
-First task:
+- size-based placement;
+- world pickup with atomic capacity validation;
+- drag and drop;
+- `R` rotation for the item under the cursor;
+- icons and stack amount display;
+- debug items seed the real player inventory.
+- reusable `GridInventory` backs player and container storage;
+- `ContainerInventory` exposes name, description, grid size and starting items in the Inspector;
+- `ShelfTableSingle` opens a two-panel window with container left and player inventory right.
+- items transfer bidirectionally through an atomic `InventoryTransferService` operation;
+- the source grid retains ownership of detached placements until commit or rollback;
+- closing the UI closes the connected drawer.
+- `ContainerInventory` is storage-only; physical `Drawer` and `Door` components open it so animations cannot be bypassed;
+- the bedside cabinet `LeftShelf` and `LeftDoor` own separate container inventories, and UI close returns the active mechanism to its closed state.
+- generic world storage uses `ContainerInteractable`; Animator triggers and open/close events are optional, so static containers need no animation setup.
+- each storage compartment keeps its `ContainerInventory` on the same GameObject as its `Drawer`, `Door` or `ContainerInteractable`, exposing metadata and grid size in one Inspector selection.
 
-1. inspect `InventoryUI`;
-2. inspect `InventorySlotUI`;
-3. verify Inspector references;
-4. restore the display;
-5. update `DEV_LOG.md` after the fix.
+Immediate next steps:
+
+1. perform the final Play Mode pass for `LeftShelf`/`LeftDoor` interaction angles, pickup, full-inventory rejection, drag rollback and rotation;
+2. add distance-based container auto-close and define the future server validation request;
+3. implement dropping an item back into the world.
 
 ## Documentation responsibility
 

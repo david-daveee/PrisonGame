@@ -1,101 +1,68 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class PlayerInventory : MonoBehaviour, IInventory
+public class PlayerInventory : MonoBehaviour, IGridInventory
 {
-    private readonly List<InventoryItem> items = new List<InventoryItem>();
-    
+    [Header("Grid")]
+    [SerializeField, Min(1)] private int width = 4;
+    [SerializeField, Min(1)] private int height = 4;
+
+    private GridInventory inventory;
+
+    public InventoryGrid Grid => GetInventory().Grid;
+
+    public event Action Changed
+    {
+        add => GetInventory().Changed += value;
+        remove => GetInventory().Changed -= value;
+    }
+
+    private void Awake()
+    {
+        GetInventory();
+    }
+
     public bool TryAddItem(InventoryItem inventoryItem)
     {
-        if (inventoryItem == null ||
-            inventoryItem.ItemData == null ||
-            inventoryItem.Amount <= 0)
+        bool added = GetInventory().TryAddItem(inventoryItem);
+
+        if (added)
         {
-            return false;
+            Debug.Log($"Added: {inventoryItem.ItemData.DisplayName}");
         }
 
-        int remainingAmount = inventoryItem.Amount;
-        ItemData itemData = inventoryItem.ItemData;
-
-        // Сначала заполняем уже существующие неполные стаки.
-        foreach (InventoryItem existingItem in items)
-        {
-            if (existingItem.ItemData.ItemId != itemData.ItemId)
-            {
-                continue;
-            }
-
-            int freeSpace = itemData.MaxStack - existingItem.Amount;
-
-            if (freeSpace <= 0)
-            {
-                continue;
-            }
-
-            int amountToAdd = Mathf.Min(freeSpace, remainingAmount);
-
-            existingItem.AddAmount(amountToAdd);
-            remainingAmount -= amountToAdd;
-
-            if (remainingAmount == 0)
-            {
-                Debug.Log($"Added: {itemData.DisplayName}");
-                return true;
-            }
-        }
-
-        // Если предметы ещё остались — создаём новые стаки.
-        while (remainingAmount > 0)
-        {
-            int stackAmount = Mathf.Min(itemData.MaxStack, remainingAmount);
-
-            items.Add(new InventoryItem(itemData, stackAmount));
-            remainingAmount -= stackAmount;
-        }
-
-        Debug.Log($"Added: {itemData.DisplayName}");
-        return true;
+        return added;
     }
 
     public bool TryRemoveItem(InventoryItem inventoryItem)
     {
-        if (inventoryItem == null)
-        {
-            return false;
-        }
-
-        return items.Remove(inventoryItem);
+        return GetInventory().TryRemoveItem(inventoryItem);
     }
 
     public bool HasItem(ItemId itemId, int amount = 1)
     {
-        if (amount <= 0)
-        {
-            return true;
-        }
-
-        int totalAmount = 0;
-
-        foreach (InventoryItem inventoryItem in items)
-        {
-            if (inventoryItem.ItemData.ItemId != itemId)
-            {
-                continue;
-            }
-
-            totalAmount += inventoryItem.Amount;
-
-            if (totalAmount >= amount)
-            {
-                return true;
-            }
-        }
-
-        return false;
+        return GetInventory().HasItem(itemId, amount);
     }
 
     public IReadOnlyList<InventoryItem> GetItems()
     {
-        return items;
+        return GetInventory().GetItems();
+    }
+
+    public void NotifyChanged()
+    {
+        GetInventory().NotifyChanged();
+    }
+
+    private GridInventory GetInventory()
+    {
+        inventory ??= new GridInventory(
+            "Player Inventory",
+            width,
+            height
+        );
+
+        return inventory;
     }
 }
