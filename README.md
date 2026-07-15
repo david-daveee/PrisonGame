@@ -14,7 +14,8 @@ Implemented:
 - grid placement with per-item width, height and rotation;
 - world-item pickup with atomic capacity validation;
 - drag and drop, invalid-drop rollback and `R` rotation;
-- transparent item icons, stack amounts and category-ready visuals;
+- padded transparent item icons, bottom item names, stack amounts and Inspector-configurable category colors;
+- Tarkov-style green/red occupied-cell preview while dragging, with labels hidden until drop;
 - two-panel player/container UI;
 - bidirectional atomic item transfer;
 - independent inventories for separate cabinet compartments;
@@ -26,7 +27,7 @@ Current focus:
 
 - final Play Mode validation of the complete container loop;
 - dropping inventory items back into the world;
-- stack splitting, category backgrounds and contraband markers;
+- stack splitting and contraband markers;
 - distance-based container closing;
 - defining multiplayer validation requests.
 
@@ -49,7 +50,7 @@ Every physically separate compartment owns its own `ContainerInventory`. Keep th
 4. Leave `Animator` empty for a static container.
 5. Optionally assign an `AudioSource`, `Open Sound` and `Close Sound`.
 
-For an animated container, assign an Animator whose trigger parameters match `Open Trigger` and `Close Trigger` (defaults: `Open` and `Close`). `On Opened` and `On Closed` are optional hooks for custom presentation code, lights, particles or other effects.
+For an animated container, assign an Animator whose trigger parameters match `Open Trigger` and `Close Trigger` (defaults: `Open` and `Close`). For a door, animate a child `Pivot` placed at the physical hinge: the closed key is normally `Y = 0`, and the open key is the desired angle. For a sliding drawer, animate the Pivot's local position instead; `DrawerContainer` currently moves local X from `0` to `-0.3` over 0.25 seconds. Keep the visible mesh and moving colliders below that Pivot. `On Opened` and `On Closed` are optional hooks for custom presentation code, lights, particles or other effects.
 
 For world audio, disable `Play On Awake` and `Loop` on the AudioSource and set `Spatial Blend` to `1` for 3D sound. The AudioSource clip itself may stay empty because `ContainerInteractable` uses `PlayOneShot` with the assigned open and close clips.
 

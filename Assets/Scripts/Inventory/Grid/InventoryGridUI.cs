@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -15,6 +16,25 @@ public class InventoryGridUI : MonoBehaviour
     [SerializeField, Min(1f)] private float cellSize = 70f;
     [SerializeField, Min(0f)] private float spacing = 4f;
 
+    [Header("Category Colors")]
+    [SerializeField] private Color emptyCellColor =
+        new Color(0.35f, 0.33f, 0.33f, 0.4f);
+    [SerializeField] private List<ItemCategoryColor> categoryColors = new()
+    {
+        new(ItemCategory.Tool, new Color(0.2f, 0.45f, 0.65f, 0.55f)),
+        new(ItemCategory.Food, new Color(0.65f, 0.45f, 0.15f, 0.55f)),
+        new(ItemCategory.Material, new Color(0.5f, 0.36f, 0.22f, 0.55f)),
+        new(ItemCategory.Medicine, new Color(0.65f, 0.2f, 0.24f, 0.55f)),
+        new(ItemCategory.Clothing, new Color(0.35f, 0.3f, 0.65f, 0.55f)),
+        new(ItemCategory.Valuable, new Color(0.7f, 0.6f, 0.18f, 0.55f))
+    };
+
+    [Header("Placement Preview")]
+    [SerializeField] private Color validPlacementColor =
+        new Color(0.18f, 0.7f, 0.28f, 0.75f);
+    [SerializeField] private Color invalidPlacementColor =
+        new Color(0.8f, 0.18f, 0.18f, 0.75f);
+
     private InventoryGrid grid;
     private IGridInventory inventory;
     private InventoryUI transferCoordinator;
@@ -23,6 +43,7 @@ public class InventoryGridUI : MonoBehaviour
     private Vector2Int dragStartPosition;
     private bool dragStartRotation;
     private bool hasDetachedPlacement;
+    private InventoryCellUI[,] cells;
 
     public void Initialize(
         IGridInventory gridInventory,
@@ -45,6 +66,7 @@ public class InventoryGridUI : MonoBehaviour
         ResizeLayers();
         CreateCells();
         CreateItems();
+        RefreshCellColors();
     }
 
     public void Refresh()
@@ -56,6 +78,7 @@ public class InventoryGridUI : MonoBehaviour
 
         ClearLayer(itemsLayer);
         CreateItems();
+        RefreshCellColors();
     }
 
     public void HandleDrop(
@@ -157,11 +180,76 @@ public class InventoryGridUI : MonoBehaviour
         }
     }
 
-    public void BeginDrag(InventoryItemUI itemUI)
+    public bool TryShowPlacementPreview(
+        InventoryItemUI itemUI,
+        PointerEventData eventData)
+    {
+        if (grid == null || itemUI?.Placement?.Item == null)
+        {
+            return false;
+        }
+
+        if (!TryGetGridPosition(
+            eventData,
+            itemUI.PointerOffset,
+            out Vector2Int gridPosition))
+        {
+            return false;
+        }
+
+        InventoryPlacement placement = itemUI.Placement;
+        bool canPlace = grid.CanPlaceItem(
+            placement.Item,
+            gridPosition,
+            placement.IsRotated
+        );
+        Color previewColor = canPlace
+            ? validPlacementColor
+            : invalidPlacementColor;
+
+        SetCellsColor(
+            gridPosition,
+            placement.GetCurrentSize(),
+            previewColor,
+            true
+        );
+        return true;
+    }
+
+    public void ClearPlacementPreview()
+    {
+        if (cells == null)
+        {
+            return;
+        }
+
+        foreach (InventoryCellUI cell in cells)
+        {
+            cell.ClearPlacementPreview();
+        }
+    }
+
+    public void UpdateDragPreview(
+        InventoryItemUI itemUI,
+        PointerEventData eventData)
+    {
+        transferCoordinator?.UpdateDragPreview(
+            this,
+            itemUI,
+            eventData
+        );
+    }
+
+    public void ClearDragPreview()
+    {
+        transferCoordinator?.ClearDragPreview();
+    }
+
+    public bool BeginDrag(InventoryItemUI itemUI)
     {
         if (grid == null || itemUI == null)
         {
-            return;
+            return false;
         }
 
         if (hasDetachedPlacement && draggedItemUI != null)
@@ -173,14 +261,16 @@ public class InventoryGridUI : MonoBehaviour
 
         if (!grid.TryDetachPlacementForMove(placement))
         {
-            return;
+            return false;
         }
 
         dragStartPosition = placement.Position;
         dragStartRotation = placement.IsRotated;
         hasDetachedPlacement = true;
         draggedItemUI = itemUI;
+        RefreshCellColors();
         transferCoordinator?.MoveItemToDragLayer(itemUI);
+        return true;
     }
 
     public void RotateHoveredItem()
@@ -292,6 +382,8 @@ public class InventoryGridUI : MonoBehaviour
 
     private void CreateCells()
     {
+        cells = new InventoryCellUI[grid.Width, grid.Height];
+
         for (int y = 0; y < grid.Height; y++)
         {
             for (int x = 0; x < grid.Width; x++)
@@ -299,6 +391,7 @@ public class InventoryGridUI : MonoBehaviour
                 InventoryCellUI cell =
                     Instantiate(cellPrefab, cellsLayer);
                 cell.Initialize(new Vector2Int(x, y));
+                cells[x, y] = cell;
 
                 RectTransform cellRect =
                     (RectTransform)cell.transform;
@@ -337,6 +430,75 @@ public class InventoryGridUI : MonoBehaviour
             size.x * cellSize + (size.x - 1) * spacing,
             size.y * cellSize + (size.y - 1) * spacing
         );
+    }
+
+    private void RefreshCellColors()
+    {
+        if (grid == null || cells == null)
+        {
+            return;
+        }
+
+        foreach (InventoryCellUI cell in cells)
+        {
+            cell.SetBaseColor(emptyCellColor);
+        }
+
+        foreach (InventoryPlacement placement in grid.Placements)
+        {
+            SetCellsColor(
+                placement.Position,
+                placement.GetCurrentSize(),
+                GetCategoryColor(placement.Item.ItemData.Category),
+                false
+            );
+        }
+    }
+
+    private Color GetCategoryColor(ItemCategory category)
+    {
+        foreach (ItemCategoryColor entry in categoryColors)
+        {
+            if (entry.Category == category)
+            {
+                return entry.Color;
+            }
+        }
+
+        return emptyCellColor;
+    }
+
+    private void SetCellsColor(
+        Vector2Int position,
+        Vector2Int size,
+        Color color,
+        bool isPreview)
+    {
+        for (int y = 0; y < size.y; y++)
+        {
+            for (int x = 0; x < size.x; x++)
+            {
+                int cellX = position.x + x;
+                int cellY = position.y + y;
+
+                if (cellX < 0 ||
+                    cellY < 0 ||
+                    cellX >= grid.Width ||
+                    cellY >= grid.Height)
+                {
+                    continue;
+                }
+
+                if (isPreview)
+                {
+                    cells[cellX, cellY].ShowPlacementPreview(color);
+                }
+                else
+                {
+                    cells[cellX, cellY].SetBaseColor(color);
+                }
+            }
+        }
     }
 
     private void ResizeLayers()

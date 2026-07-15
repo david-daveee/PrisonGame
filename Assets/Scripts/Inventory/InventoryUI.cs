@@ -150,6 +150,35 @@ public class InventoryUI : MonoBehaviour
         itemUI.transform.SetAsLastSibling();
     }
 
+    public void UpdateDragPreview(
+        InventoryGridUI source,
+        InventoryItemUI itemUI,
+        PointerEventData eventData)
+    {
+        if (source != inventoryGridUI && source != containerGridUI)
+        {
+            return;
+        }
+
+        ClearDragPreview();
+        inventoryGridUI.TryShowPlacementPreview(itemUI, eventData);
+
+        if (currentContainer != null)
+        {
+            containerGridUI.TryShowPlacementPreview(itemUI, eventData);
+        }
+    }
+
+    public void ClearDragPreview()
+    {
+        inventoryGridUI.ClearPlacementPreview();
+
+        if (containerGridUI != null)
+        {
+            containerGridUI.ClearPlacementPreview();
+        }
+    }
+
     private void RefreshPlayerInventory()
     {
         if (currentInventory != null)

@@ -59,7 +59,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Color: {r: 0.3490566, g: 0.33423817, b: 0.33423817, a: 0.40392157}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -88,4 +88,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 92668d94e6f32e24ea39c41682fb161f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::InventoryCellUI
-  backgroundImage: {fileID: 0}
+  backgroundImage: {fileID: 6914870864543866683}

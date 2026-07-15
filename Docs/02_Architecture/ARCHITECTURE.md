@@ -91,10 +91,10 @@ World representation of a concrete instance.
 Opens and closes inventory windows, subscribes to inventory changes and connects models to `InventoryGridUI`. Container mode displays the container grid on the left and player grid on the right. A shared topmost `DragLayer` keeps the temporary dragged visual above both panels without owning gameplay state.
 
 ### InventoryGridUI
-Displays cells and placements. Converts pointer positions to grid positions, but delegates placement validation to `InventoryGrid`.
+Displays cells and placements. Converts pointer positions to grid positions, but delegates placement validation to `InventoryGrid`. Its Inspector palette maps `ItemCategory` values to occupied-cell colors. During drag it asks the same `InventoryGrid.CanPlaceItem` rule used by drop and temporarily overrides the target cells with valid or invalid preview colors.
 
 ### InventoryItemUI
-Displays one placement and reports pointer hover and drag/drop gestures to `InventoryGridUI`. Rotation input comes from `PlayerInputHandler`; `R` rotates the hovered placement.
+Displays one placement and reports pointer hover and drag/drop gestures to `InventoryGridUI`. Name and amount are presentation-only and hidden while dragging, leaving the centred icon unobstructed. Rotation input comes from `PlayerInputHandler`; `R` rotates the hovered placement and immediately refreshes the cell preview.
 
 ### PlayerInteractor
 Finds `IInteractable` and calls `Interact(this)`.
@@ -141,6 +141,10 @@ The Collider used by `PlayerInteractor` must be on the interactable GameObject o
 - `On Opened` and `On Closed` Inspector events for custom effects.
 
 An ordinary container works with all presentation fields empty. `Drawer` and `Door` remain specialized for their current procedural movement.
+
+For Animator-driven hinged containers, the Animator belongs to the interactable root and the clip animates a child path such as `Pivot`. The Pivot is positioned at the hinge and owns the mesh plus both physical and interaction colliders. A typical small opening clip records `localEulerAnglesRaw.y` from `0` to `10` degrees; controller transitions listen to the `Open` and `Close` triggers raised by `ContainerInteractable`.
+
+Animator-driven sliding drawers use the same hierarchy and triggers, but animate the Pivot's local position rather than its rotation. The bedside `DrawerContainer` moves local X from `0` to `-0.3` over 0.25 seconds; placing both colliders below the Pivot keeps interaction and collision geometry synchronized with the visible drawer.
 
 ## Item model
 

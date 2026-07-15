@@ -32,6 +32,13 @@
 - Moved the `LeftShelf` storage component onto the drawer GameObject so its name, description, grid size and starting items are editable beside the drawer setup.
 - Made `ContainerInteractable` automatically require and add `ContainerInventory` for new ordinary containers.
 - Added optional `AudioSource`, open clip and close clip fields to generic container interaction.
+- Configured `DoorContainer` as the first Animator-driven hinged container: `Pivot` rotates from 0 to 10 degrees over 0.25 seconds and owns its mesh and colliders.
+- Configured `DrawerContainer` with its own Animator Controller: `Pivot` slides on local X from 0 to -0.3 over 0.25 seconds, with both colliders moving beneath it.
+- Added a small inset around grid-item icons, bottom item names and bottom-right amounts generated from the live item data.
+- Reserved a fixed gap between item names and amounts so long labels cannot overlap `x1` on 1x1 items.
+- Reserved a separate bottom label strip inside every placement and fitted the icon into the remaining area, preventing item art from sitting beneath its name or amount.
+- Added Inspector-configurable colors for every `ItemCategory`, applied to the cells occupied by each placement.
+- Added live green/red placement previews driven by `InventoryGrid.CanPlaceItem`; drag visuals now hide name and amount until drop.
 
 ### Current limitations
 

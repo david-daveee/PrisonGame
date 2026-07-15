@@ -10,7 +10,17 @@ public class InventoryItemUI : MonoBehaviour,
     IPointerEnterHandler,
     IPointerExitHandler
 {
+    private const float LabelHeight = 20f;
+    private const float LabelInset = 4f;
+    private const float LabelGap = 5f;
+    private const float AmountWidth = 22f;
+
+    [Header("Visuals")]
     [SerializeField] private Image itemIcon;
+    [SerializeField, Min(0f)] private float iconPadding = 5f;
+
+    [Header("Labels")]
+    [SerializeField] private TMP_Text itemNameText;
     [SerializeField] private TMP_Text amountText;
 
     private InventoryGridUI owner;
@@ -18,6 +28,8 @@ public class InventoryItemUI : MonoBehaviour,
     private RectTransform rectTransform;
     private CanvasGroup canvasGroup;
     private Image visualIcon;
+    private PointerEventData lastDragEventData;
+    private bool isDragging;
 
     public InventoryPlacement Placement => placement;
     public Vector2 PointerOffset { get; private set; }
@@ -41,9 +53,9 @@ public class InventoryItemUI : MonoBehaviour,
         visualIcon.sprite = item.ItemData.Icon;
         visualIcon.enabled = item.ItemData.Icon != null;
         visualIcon.preserveAspect = true;
-        amountText.text = item.Amount > 1
-            ? $"x{item.Amount}"
-            : string.Empty;
+        ConfigureLabels();
+        itemNameText.text = item.ItemData.DisplayName;
+        amountText.text = $"x{item.Amount}";
     }
 
     public void ApplyLayout(Vector2 position, Vector2 size)
@@ -54,14 +66,32 @@ public class InventoryItemUI : MonoBehaviour,
         rectTransform.anchoredPosition = position;
         rectTransform.sizeDelta = size;
 
+        ApplyIconLayout(size);
+        ApplyLabelLayout();
+    }
+
+    private void ApplyIconLayout(Vector2 size)
+    {
         RectTransform iconRect = visualIcon.rectTransform;
         iconRect.anchorMin = new Vector2(0.5f, 0.5f);
         iconRect.anchorMax = new Vector2(0.5f, 0.5f);
         iconRect.pivot = new Vector2(0.5f, 0.5f);
-        iconRect.anchoredPosition = Vector2.zero;
+        iconRect.anchoredPosition = new Vector2(
+            0f,
+            isDragging ? 0f : LabelHeight * 0.5f
+        );
+
+        float reservedLabelHeight = isDragging ? 0f : LabelHeight;
+        Vector2 availableIconSize = new Vector2(
+            Mathf.Max(1f, size.x - iconPadding * 2f),
+            Mathf.Max(
+                1f,
+                size.y - iconPadding * 2f - reservedLabelHeight
+            )
+        );
         iconRect.sizeDelta = placement.IsRotated
-            ? new Vector2(size.y, size.x)
-            : size;
+            ? new Vector2(availableIconSize.y, availableIconSize.x)
+            : availableIconSize;
         iconRect.localEulerAngles = placement.IsRotated
             ? new Vector3(0f, 0f, -90f)
             : Vector3.zero;
@@ -69,16 +99,28 @@ public class InventoryItemUI : MonoBehaviour,
 
     public void OnBeginDrag(PointerEventData eventData)
     {
+        lastDragEventData = eventData;
         PointerOffset = GetCenterOffset(rectTransform.sizeDelta);
         canvasGroup.blocksRaycasts = false;
         transform.SetAsLastSibling();
-        owner.BeginDrag(this);
+
+        if (!owner.BeginDrag(this))
+        {
+            canvasGroup.blocksRaycasts = true;
+            lastDragEventData = null;
+            return;
+        }
+
+        SetDragging(true);
         UpdateDragPosition(eventData);
+        owner.UpdateDragPreview(this, eventData);
     }
 
     public void OnDrag(PointerEventData eventData)
     {
+        lastDragEventData = eventData;
         UpdateDragPosition(eventData);
+        owner.UpdateDragPreview(this, eventData);
     }
 
     public void ApplyRotationAroundCenter(Vector2 size)
@@ -90,6 +132,11 @@ public class InventoryItemUI : MonoBehaviour,
 
         ApplyLayout(currentCenter - newCenterOffset, size);
         PointerOffset = newCenterOffset;
+
+        if (lastDragEventData != null)
+        {
+            owner.UpdateDragPreview(this, lastDragEventData);
+        }
     }
 
     private void UpdateDragPosition(PointerEventData eventData)
@@ -114,6 +161,9 @@ public class InventoryItemUI : MonoBehaviour,
 
     public void OnEndDrag(PointerEventData eventData)
     {
+        owner.ClearDragPreview();
+        SetDragging(false);
+        lastDragEventData = null;
         canvasGroup.blocksRaycasts = true;
         owner.HandleDrop(this, eventData);
     }
@@ -151,5 +201,69 @@ public class InventoryItemUI : MonoBehaviour,
 
         visualIcon = iconObject.GetComponent<Image>();
         visualIcon.raycastTarget = false;
+    }
+
+    private void ConfigureLabels()
+    {
+        ConfigureLabel(itemNameText, TextAlignmentOptions.BottomLeft);
+        ConfigureLabel(amountText, TextAlignmentOptions.BottomRight);
+
+        itemNameText.enableAutoSizing = true;
+        itemNameText.fontSizeMin = 8f;
+        itemNameText.fontSizeMax = 13f;
+        itemNameText.overflowMode = TextOverflowModes.Ellipsis;
+
+        amountText.enableAutoSizing = false;
+        amountText.fontSize = 13f;
+    }
+
+    private static void ConfigureLabel(
+        TMP_Text label,
+        TextAlignmentOptions alignment)
+    {
+        label.alignment = alignment;
+        label.color = Color.white;
+        label.fontStyle = FontStyles.Bold;
+        label.outlineColor = Color.black;
+        label.outlineWidth = 0.2f;
+        label.raycastTarget = false;
+    }
+
+    private void ApplyLabelLayout()
+    {
+        RectTransform nameRect = itemNameText.rectTransform;
+        nameRect.anchorMin = Vector2.zero;
+        nameRect.anchorMax = new Vector2(1f, 0f);
+        nameRect.pivot = new Vector2(0.5f, 0f);
+        nameRect.anchoredPosition = new Vector2(
+            -(AmountWidth + LabelGap) * 0.5f,
+            LabelInset
+        );
+        nameRect.sizeDelta = new Vector2(
+            -(
+                AmountWidth +
+                LabelGap +
+                LabelInset * 2f
+            ),
+            LabelHeight
+        );
+
+        RectTransform amountRect = amountText.rectTransform;
+        amountRect.anchorMin = new Vector2(1f, 0f);
+        amountRect.anchorMax = new Vector2(1f, 0f);
+        amountRect.pivot = new Vector2(1f, 0f);
+        amountRect.anchoredPosition = new Vector2(
+            -LabelInset,
+            LabelInset
+        );
+        amountRect.sizeDelta = new Vector2(AmountWidth, LabelHeight);
+    }
+
+    private void SetDragging(bool dragging)
+    {
+        isDragging = dragging;
+        itemNameText.gameObject.SetActive(!dragging);
+        amountText.gameObject.SetActive(!dragging);
+        ApplyIconLayout(rectTransform.sizeDelta);
     }
 }

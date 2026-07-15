@@ -75,7 +75,8 @@ Implemented:
 - world pickup with atomic capacity validation;
 - drag and drop;
 - `R` rotation for the item under the cursor;
-- icons and stack amount display;
+- padded icons, item names, stack amounts and category-colored occupied cells;
+- drag visuals hide labels and show green/red target-cell validation across player and container grids;
 - debug items seed the real player inventory.
 - reusable `GridInventory` backs player and container storage;
 - `ContainerInventory` exposes name, description, grid size and starting items in the Inspector;

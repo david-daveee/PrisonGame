@@ -62,6 +62,9 @@ Category controls background, contraband uses a separate marker, and there is no
 ### Reason
 Category and contraband are independent properties, and item value should be understood naturally.
 
+### Implementation
+`InventoryGridUI` exposes a `Category Colors` list in the Inspector. Each entry maps an `ItemCategory` to the base color of its occupied cells; adding a category only requires adding the enum value and one palette entry. Valid and invalid drag-preview colors temporarily override those base colors and use the same `InventoryGrid.CanPlaceItem` validation as the final drop.
+
 ---
 
 ## 2026-07-12 — Home profession stations are progression bonuses
