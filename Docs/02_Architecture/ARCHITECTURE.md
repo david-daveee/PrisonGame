@@ -106,6 +106,42 @@ void Interact(PlayerInteractor interactor);
 string GetInteractionText();
 ```
 
+## Container authoring rules
+
+### One compartment, one storage model
+
+Every independently stored drawer, door compartment, box or hidden cache owns a separate `ContainerInventory`. Sharing a reference is valid only when multiple access points intentionally expose the same contents.
+
+Keep `ContainerInventory` on the same GameObject as its opening component:
+
+```text
+Static or Animator-driven container
+├── ContainerInventory
+└── ContainerInteractable
+
+Procedural drawer
+├── ContainerInventory
+└── Drawer
+
+Procedural door compartment
+├── ContainerInventory
+└── Door
+```
+
+### Collider ownership
+
+The Collider used by `PlayerInteractor` must be on the interactable GameObject or below it in the hierarchy because interaction is resolved with `GetComponentInParent<IInteractable>()`. Avoid broad body colliders that intercept the ray before it reaches the physical mechanism.
+
+### Optional presentation
+
+`ContainerInteractable` supports three independent optional presentation paths:
+
+- Animator triggers for `Open` and `Close`;
+- `AudioSource.PlayOneShot` with separate open and close clips;
+- `On Opened` and `On Closed` Inspector events for custom effects.
+
+An ordinary container works with all presentation fields empty. `Drawer` and `Door` remain specialized for their current procedural movement.
+
 ## Item model
 
 ```text

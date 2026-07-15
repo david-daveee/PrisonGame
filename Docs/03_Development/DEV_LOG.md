@@ -41,7 +41,7 @@
 
 ### Exact next step
 
-Test opening from the left shelf and `LeftDoor` at several view angles, then test bidirectional transfer, full-destination rollback and mechanism closing through Tab in Play Mode. Then add distance-based auto-close and define the multiplayer request/response boundary.
+Test `LeftShelf`, `LeftDoor` and the non-animated bed container from several view angles. Verify optional open/close sounds, bidirectional transfer, full-destination rollback and mechanism closing through Tab in Play Mode. Then add distance-based auto-close and define the multiplayer request/response boundary.
 
 ### Recommended commit
 

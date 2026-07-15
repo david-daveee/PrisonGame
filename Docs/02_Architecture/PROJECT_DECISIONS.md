@@ -107,7 +107,7 @@ Use the reusable non-MonoBehaviour `GridInventory` model behind both `PlayerInve
 Transfers must be validated by identical rules on both sides, without copying storage logic into every container type.
 
 ### Consequences
-- Container metadata and Unity interaction stay in `ContainerInventory`.
+- Container metadata stays in `ContainerInventory`; Unity interaction stays in `Drawer`, `Door` or `ContainerInteractable`.
 - Storage rules stay in `GridInventory`.
 - `InventoryUI` can display both through `IGridInventory`.
 - Cross-grid movement is committed through `InventoryTransferService`, not by directly mutating both panels in UI code.
@@ -143,12 +143,14 @@ One collider hit maps to one visible physical action, and separate cabinet compa
 Many world objects need storage, but not every box, mattress or cache has a door animation.
 
 ### Decision
-Use `ContainerInteractable` as the reusable interaction component. It always opens a referenced `ContainerInventory`, while Animator triggers and Inspector events remain optional presentation hooks.
+Use `ContainerInteractable` as the reusable interaction component. It always opens a referenced `ContainerInventory`, while Animator triggers, open/close audio clips and Inspector events remain optional presentation hooks.
 
 ### Reason
 Storage rules and interaction stay reusable without forcing every container to own a bespoke animation script.
 
 ### Consequences
-- A static container needs only `ContainerInventory`, `ContainerInteractable` and a reachable collider.
+- Adding `ContainerInteractable` automatically adds the required `ContainerInventory`.
+- A static container needs those components and a reachable collider; all presentation fields may remain empty.
 - An animated container may assign an Animator with `Open` and `Close` triggers.
+- Open and close clips play through an optional assigned `AudioSource`.
 - Custom procedural presentation can subscribe through `On Opened` and `On Closed` without moving storage state into animation code.

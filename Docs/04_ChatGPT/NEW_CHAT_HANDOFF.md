@@ -79,13 +79,13 @@ Implemented:
 - debug items seed the real player inventory.
 - reusable `GridInventory` backs player and container storage;
 - `ContainerInventory` exposes name, description, grid size and starting items in the Inspector;
-- `ShelfTableSingle` opens a two-panel window with container left and player inventory right.
+- `LeftShelf`, `LeftDoor` and ordinary world containers open a two-panel window with container left and player inventory right.
 - items transfer bidirectionally through an atomic `InventoryTransferService` operation;
 - the source grid retains ownership of detached placements until commit or rollback;
 - closing the UI closes the connected drawer.
 - `ContainerInventory` is storage-only; physical `Drawer` and `Door` components open it so animations cannot be bypassed;
 - the bedside cabinet `LeftShelf` and `LeftDoor` own separate container inventories, and UI close returns the active mechanism to its closed state.
-- generic world storage uses `ContainerInteractable`; Animator triggers and open/close events are optional, so static containers need no animation setup.
+- generic world storage uses `ContainerInteractable`; Animator triggers, separate open/close sounds and Inspector events are optional, so static containers need no presentation setup.
 - each storage compartment keeps its `ContainerInventory` on the same GameObject as its `Drawer`, `Door` or `ContainerInteractable`, exposing metadata and grid size in one Inspector selection.
 
 Immediate next steps:

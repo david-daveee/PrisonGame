@@ -33,6 +33,9 @@
 - [x] Two-panel UI
 - [x] Item transfer
 - [x] Open/close animation
+- [x] Reusable non-animated container interaction
+- [x] Optional Animator triggers, audio clips and Inspector events
+- [x] Independent storage per physical compartment
 - [ ] Auto-close conditions
 - [ ] Distance checks
 - [ ] Multiplayer validation plan
