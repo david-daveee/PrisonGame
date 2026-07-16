@@ -39,21 +39,28 @@
 - Reserved a separate bottom label strip inside every placement and fitted the icon into the remaining area, preventing item art from sitting beneath its name or amount.
 - Added Inspector-configurable colors for every `ItemCategory`, applied to the cells occupied by each placement.
 - Added live green/red placement previews driven by `InventoryGrid.CanPlaceItem`; drag visuals now hide name and amount until drop.
+- Added atomic full-stack drop outside the inventory window, preserving the concrete `InventoryItem` instance through `WorldItem.Initialize`.
+- Added a player-owned `WorldItemDropper` with an Inspector-configured drop point, ground probe and safe forward offset.
+- Added separate 3D world-item prefabs for Book, Cigarettes, Crowbar, Screwdriver and Soap and connected each `ItemData` through its `World Prefab` field.
+- Added guarded stack amount operations and model-level split, cross-inventory partial transfer and compatible-stack merge transactions.
+- Added mouse-wheel split drag with a temporary amount preview, rotation, target-cell feedback and complete cancellation safety.
+- Added `Ctrl` + drag splitting through a reusable slider/input dialog that revalidates the remembered destination on Apply.
+- Added partial-stack world dropping and editor tests for amount conservation, occupied destinations, cross-inventory splitting, full merge targets and `MaxStack = 1`.
 
 ### Current limitations
 
-- No drop from inventory back into the world yet.
-- No stack splitting or contraband marker yet.
+- No contraband marker yet.
+- Dropped items use item-specific 3D prefabs; physical throw impulses are postponed.
 - Play Mode interaction still needs a final manual pass in Unity.
 
 ### Exact next step
 
-Test `LeftShelf`, `LeftDoor` and the non-animated bed container from several view angles. Verify optional open/close sounds, bidirectional transfer, full-destination rollback and mechanism closing through Tab in Play Mode. Then add distance-based auto-close and define the multiplayer request/response boundary.
+Run the documented Play Mode pass for pickup, full/partial world drop, both split controls, cancellation and player/container transfers. Then add distance-based container auto-close, contraband markers and define the multiplayer request/response boundary.
 
 ### Recommended commit
 
 ```text
-feat: add reusable grid containers and two-panel inventory UI
+feat: add atomic world drop and stack splitting
 ```
 
 ## 2026-07-12

@@ -157,3 +157,35 @@ Storage rules and interaction stay reusable without forcing every container to o
 - An animated container may assign an Animator with `Open` and `Close` triggers.
 - Open and close clips play through an optional assigned `AudioSource`.
 - Custom procedural presentation can subscribe through `On Opened` and `On Closed` without moving storage state into animation code.
+
+---
+
+## 2026-07-15 — World transitions preserve the item instance
+
+### Decision
+A full-stack world drop passes the existing `InventoryItem` to `WorldItem.Initialize`. Spawning is handled by `WorldItemDropper`, while `InventoryDropService` commits or rolls back the inventory transaction.
+
+### Reason
+Amount and future durability, unique IDs and modifications belong to the concrete instance and must survive the complete world/player/container lifecycle.
+
+### Consequences
+- `ItemData` owns the world-prefab reference.
+- Grid UI never instantiates world objects.
+- The inventory placement is finalized only after a successful spawn.
+- Releasing inside the inventory window never means “drop into world”.
+
+---
+
+## 2026-07-15 — Stack splitting is a model transaction
+
+### Decision
+`InventoryStackService` owns split, partial transfer and compatible-stack merge rules. Wheel drag and the Ctrl dialog are two UI entry points into the same service.
+
+### Reason
+The amount invariant must be independent of presentation and reusable by a future authoritative server.
+
+### Consequences
+- Existing stacks remain between `1` and `MaxStack`.
+- A partial destination that cannot accept the complete selected amount rejects the operation.
+- The destination is created or increased before the source is reduced, with rollback on failure.
+- Cancelling either split UX leaves the original `InventoryItem` unchanged.

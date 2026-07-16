@@ -14,4 +14,9 @@ public class ItemData : ScriptableObject
 
     [Min(1)]
     public int MaxStack = 1;
+
+    [Header("World Representation")]
+    [SerializeField] private WorldItem worldPrefab;
+
+    public WorldItem WorldPrefab => worldPrefab;
 }

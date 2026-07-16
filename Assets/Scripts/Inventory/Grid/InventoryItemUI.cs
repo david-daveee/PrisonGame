@@ -1,12 +1,14 @@
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 public class InventoryItemUI : MonoBehaviour,
     IBeginDragHandler,
     IDragHandler,
     IEndDragHandler,
+    IScrollHandler,
     IPointerEnterHandler,
     IPointerExitHandler
 {
@@ -30,9 +32,12 @@ public class InventoryItemUI : MonoBehaviour,
     private Image visualIcon;
     private PointerEventData lastDragEventData;
     private bool isDragging;
+    private bool splitDrag;
+    private bool controlDragRequested;
 
     public InventoryPlacement Placement => placement;
     public Vector2 PointerOffset { get; private set; }
+    public bool IsSplitDrag => splitDrag;
 
     public void Initialize(
         InventoryGridUI inventoryGridUI,
@@ -99,6 +104,9 @@ public class InventoryItemUI : MonoBehaviour,
 
     public void OnBeginDrag(PointerEventData eventData)
     {
+        controlDragRequested =
+            Keyboard.current != null &&
+            Keyboard.current.ctrlKey.isPressed;
         lastDragEventData = eventData;
         PointerOffset = GetCenterOffset(rectTransform.sizeDelta);
         canvasGroup.blocksRaycasts = false;
@@ -121,6 +129,27 @@ public class InventoryItemUI : MonoBehaviour,
         lastDragEventData = eventData;
         UpdateDragPosition(eventData);
         owner.UpdateDragPreview(this, eventData);
+    }
+
+    public void OnScroll(PointerEventData eventData)
+    {
+        if (!isDragging || Mathf.Approximately(eventData.scrollDelta.y, 0f))
+        {
+            return;
+        }
+
+        int direction = eventData.scrollDelta.y > 0f ? 1 : -1;
+
+        if (!owner.TryAdjustSplitAmount(this, direction, out int amount))
+        {
+            return;
+        }
+
+        splitDrag = true;
+        amountText.gameObject.SetActive(true);
+        amountText.text = $"x{amount}";
+        owner.UpdateDragPreview(this, eventData);
+        eventData.Use();
     }
 
     public void ApplyRotationAroundCenter(Vector2 size)
@@ -162,10 +191,18 @@ public class InventoryItemUI : MonoBehaviour,
     public void OnEndDrag(PointerEventData eventData)
     {
         owner.ClearDragPreview();
-        SetDragging(false);
         lastDragEventData = null;
         canvasGroup.blocksRaycasts = true;
-        owner.HandleDrop(this, eventData);
+        owner.HandleDrop(
+            this,
+            eventData,
+            controlDragRequested
+        );
+
+        if (gameObject.activeSelf)
+        {
+            SetDragging(false);
+        }
     }
 
     public void OnPointerEnter(PointerEventData eventData)
@@ -262,8 +299,19 @@ public class InventoryItemUI : MonoBehaviour,
     private void SetDragging(bool dragging)
     {
         isDragging = dragging;
+        if (!dragging)
+        {
+            splitDrag = false;
+            controlDragRequested = false;
+        }
+
         itemNameText.gameObject.SetActive(!dragging);
         amountText.gameObject.SetActive(!dragging);
         ApplyIconLayout(rectTransform.sizeDelta);
+    }
+
+    public void SetPlacement(InventoryPlacement inventoryPlacement)
+    {
+        placement = inventoryPlacement;
     }
 }

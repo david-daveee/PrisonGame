@@ -6,6 +6,8 @@ public class InventoryUI : MonoBehaviour
 {
     [SerializeField] private GameObject inventoryRoot;
     [SerializeField] private InventoryGridUI inventoryGridUI;
+    [SerializeField] private WorldItemDropper worldItemDropper;
+    [SerializeField] private StackSplitDialog stackSplitDialogPrefab;
     [SerializeField, Min(0f)] private float gridSpacing = 80f;
     [SerializeField, Min(0f)] private float panelPadding = 50f;
 
@@ -15,10 +17,57 @@ public class InventoryUI : MonoBehaviour
     private TMP_Text playerTitleText;
     private TMP_Text containerInfoText;
     private RectTransform dragLayer;
+    private StackSplitDialog stackSplitDialog;
+    private PendingSplit pendingSplit;
+    private CanvasGroup playerGridCanvasGroup;
+    private CanvasGroup containerGridCanvasGroup;
+
+    public bool HasOpenModal =>
+        stackSplitDialog != null && stackSplitDialog.IsOpen;
+
+    private sealed class PendingSplit
+    {
+        public InventoryGridUI SourceGrid;
+        public InventoryPlacement SourcePlacement;
+        public InventoryGridUI DestinationGrid;
+        public Vector2Int DestinationPosition;
+        public InventoryPlacement MergeTarget;
+        public bool IsRotated;
+        public bool IsWorldDrop;
+    }
 
     private void Awake()
     {
         Close();
+    }
+
+    private void OnValidate()
+    {
+        if (inventoryRoot == null || inventoryGridUI == null)
+        {
+            Debug.LogError(
+                $"InventoryUI on '{name}' is missing its root or grid UI.",
+                this
+            );
+        }
+
+        if (worldItemDropper == null)
+        {
+            Debug.LogWarning(
+                $"InventoryUI on '{name}' cannot drop items without a " +
+                "WorldItemDropper.",
+                this
+            );
+        }
+
+        if (stackSplitDialogPrefab == null)
+        {
+            Debug.LogWarning(
+                $"InventoryUI on '{name}' cannot open the stack split " +
+                "dialog until its prefab is assigned.",
+                this
+            );
+        }
     }
 
     public void Open(IInventory inventory)
@@ -81,6 +130,7 @@ public class InventoryUI : MonoBehaviour
 
     public void Close()
     {
+        CancelPendingSplit();
         CloseCurrentInventories();
         inventoryRoot.SetActive(false);
     }
@@ -137,6 +187,167 @@ public class InventoryUI : MonoBehaviour
         );
     }
 
+    public bool TryDropItemIntoWorld(
+        InventoryGridUI source,
+        InventoryItemUI itemUI,
+        PointerEventData eventData)
+    {
+        if (source == null ||
+            itemUI == null ||
+            worldItemDropper == null ||
+            IsPointerInsideInventoryWindow(eventData))
+        {
+            return false;
+        }
+
+        return source.TryDropDetachedItemIntoWorld(
+            itemUI,
+            worldItemDropper
+        );
+    }
+
+    public bool TryCommitSplit(
+        InventoryGridUI sourceGrid,
+        InventoryPlacement sourcePlacement,
+        InventoryPlacement splitVisual,
+        Vector2 pointerOffset,
+        PointerEventData eventData)
+    {
+        if (sourceGrid?.Inventory == null ||
+            sourcePlacement?.Item == null ||
+            splitVisual?.Item == null)
+        {
+            return false;
+        }
+
+        if (TryResolveSplitDestination(
+            splitVisual,
+            pointerOffset,
+            eventData,
+            out InventoryGridUI destinationGrid,
+            out Vector2Int destinationPosition,
+            out InventoryPlacement mergeTarget))
+        {
+            if (mergeTarget != null)
+            {
+                return InventoryStackService.TryMergeStack(
+                    sourceGrid.Inventory,
+                    sourcePlacement,
+                    destinationGrid.Inventory,
+                    mergeTarget,
+                    splitVisual.Item.Amount
+                );
+            }
+
+            return InventoryStackService.TrySplitAndTransfer(
+                sourceGrid.Inventory,
+                sourcePlacement,
+                destinationGrid.Inventory,
+                destinationPosition,
+                splitVisual.IsRotated,
+                splitVisual.Item.Amount
+            );
+        }
+
+        if (IsPointerInsideInventoryWindow(eventData))
+        {
+            return false;
+        }
+
+        return InventoryDropService.TryDropSplit(
+            sourceGrid.Inventory,
+            sourcePlacement,
+            splitVisual.Item.Amount,
+            worldItemDropper
+        );
+    }
+
+    public bool TryOpenSplitDialog(
+        InventoryGridUI sourceGrid,
+        InventoryPlacement sourcePlacement,
+        bool isRotated,
+        Vector2 pointerOffset,
+        PointerEventData eventData)
+    {
+        if (pendingSplit != null ||
+            !InventoryStackService.CanSplit(
+                sourceGrid?.Inventory,
+                sourcePlacement))
+        {
+            return false;
+        }
+
+        InventoryItem previewItem = new InventoryItem(
+            sourcePlacement.Item.ItemData,
+            1
+        );
+        InventoryPlacement previewPlacement = new InventoryPlacement(
+            previewItem,
+            sourcePlacement.Position,
+            isRotated
+        );
+
+        PendingSplit request = new PendingSplit
+        {
+            SourceGrid = sourceGrid,
+            SourcePlacement = sourcePlacement,
+            IsRotated = isRotated
+        };
+
+        if (TryResolveSplitDestination(
+            previewPlacement,
+            pointerOffset,
+            eventData,
+            out InventoryGridUI destinationGrid,
+            out Vector2Int destinationPosition,
+            out InventoryPlacement mergeTarget))
+        {
+            request.DestinationGrid = destinationGrid;
+            request.DestinationPosition = destinationPosition;
+            request.MergeTarget = mergeTarget;
+        }
+        else if (!IsPointerInsideInventoryWindow(eventData))
+        {
+            request.IsWorldDrop = true;
+        }
+        else
+        {
+            return false;
+        }
+
+        EnsureStackSplitDialog();
+
+        if (stackSplitDialog == null)
+        {
+            return false;
+        }
+
+        if (!stackSplitDialog.Open(
+            1,
+            sourcePlacement.Item.Amount - 1,
+            ApplyPendingSplit,
+            CancelPendingSplit
+        ))
+        {
+            return false;
+        }
+
+        pendingSplit = request;
+        SetGridInteraction(false);
+        return true;
+    }
+
+    public bool TryCancelModal()
+    {
+        if (stackSplitDialog == null || !stackSplitDialog.IsOpen)
+        {
+            return false;
+        }
+
+        stackSplitDialog.Cancel();
+        return true;
+    }
+
     public void MoveItemToDragLayer(InventoryItemUI itemUI)
     {
         if (itemUI == null)
@@ -185,6 +396,56 @@ public class InventoryUI : MonoBehaviour
         {
             inventoryGridUI.Refresh();
         }
+    }
+
+    private bool IsPointerInsideInventoryWindow(
+        PointerEventData eventData)
+    {
+        return RectTransformUtility.RectangleContainsScreenPoint(
+            (RectTransform)inventoryRoot.transform,
+            eventData.position,
+            eventData.pressEventCamera
+        );
+    }
+
+    private bool TryResolveSplitDestination(
+        InventoryPlacement splitVisual,
+        Vector2 pointerOffset,
+        PointerEventData eventData,
+        out InventoryGridUI destinationGrid,
+        out Vector2Int destinationPosition,
+        out InventoryPlacement mergeTarget)
+    {
+        destinationGrid = null;
+        destinationPosition = default;
+        mergeTarget = null;
+
+        if (inventoryGridUI.TryResolveSplitDestination(
+            splitVisual.Item,
+            splitVisual.IsRotated,
+            eventData,
+            pointerOffset,
+            out destinationPosition,
+            out mergeTarget))
+        {
+            destinationGrid = inventoryGridUI;
+            return true;
+        }
+
+        if (currentContainer != null &&
+            containerGridUI.TryResolveSplitDestination(
+                splitVisual.Item,
+                splitVisual.IsRotated,
+                eventData,
+                pointerOffset,
+                out destinationPosition,
+                out mergeTarget))
+        {
+            destinationGrid = containerGridUI;
+            return true;
+        }
+
+        return false;
     }
 
     private void RefreshContainerInventory()
@@ -237,6 +498,119 @@ public class InventoryUI : MonoBehaviour
         playerTitleText = CreateInfoText("PlayerInventoryTitle");
         containerInfoText = CreateInfoText("ContainerInfo");
         EnsureDragLayer();
+    }
+
+    private void EnsureStackSplitDialog()
+    {
+        if (stackSplitDialog != null)
+        {
+            return;
+        }
+
+        if (stackSplitDialogPrefab == null)
+        {
+            Debug.LogError(
+                "InventoryUI has no Stack Split Dialog Prefab assigned.",
+                this
+            );
+            return;
+        }
+
+        stackSplitDialog = Instantiate(
+            stackSplitDialogPrefab,
+            inventoryRoot.transform
+        );
+        stackSplitDialog.name = "StackSplitDialog";
+    }
+
+    private void ApplyPendingSplit(int amount)
+    {
+        if (pendingSplit == null)
+        {
+            return;
+        }
+
+        bool succeeded;
+
+        if (pendingSplit.IsWorldDrop)
+        {
+            succeeded = InventoryDropService.TryDropSplit(
+                pendingSplit.SourceGrid.Inventory,
+                pendingSplit.SourcePlacement,
+                amount,
+                worldItemDropper
+            );
+        }
+        else if (pendingSplit.MergeTarget != null)
+        {
+            succeeded = InventoryStackService.TryMergeStack(
+                pendingSplit.SourceGrid.Inventory,
+                pendingSplit.SourcePlacement,
+                pendingSplit.DestinationGrid.Inventory,
+                pendingSplit.MergeTarget,
+                amount
+            );
+        }
+        else
+        {
+            succeeded = InventoryStackService.TrySplitAndTransfer(
+                pendingSplit.SourceGrid.Inventory,
+                pendingSplit.SourcePlacement,
+                pendingSplit.DestinationGrid.Inventory,
+                pendingSplit.DestinationPosition,
+                pendingSplit.IsRotated,
+                amount
+            );
+        }
+
+        if (!succeeded)
+        {
+            Debug.LogWarning(
+                "Stack split destination is no longer valid. " +
+                "No inventory state was changed.",
+                this
+            );
+            return;
+        }
+
+        pendingSplit = null;
+        stackSplitDialog.CloseAfterApply();
+        SetGridInteraction(true);
+    }
+
+    private void CancelPendingSplit()
+    {
+        pendingSplit = null;
+        SetGridInteraction(true);
+
+        if (stackSplitDialog != null && stackSplitDialog.IsOpen)
+        {
+            stackSplitDialog.CloseAfterApply();
+        }
+    }
+
+    private void SetGridInteraction(bool interactable)
+    {
+        playerGridCanvasGroup ??=
+            GetOrAddCanvasGroup(inventoryGridUI.gameObject);
+        playerGridCanvasGroup.interactable = interactable;
+        playerGridCanvasGroup.blocksRaycasts = interactable;
+
+        if (containerGridUI != null)
+        {
+            containerGridCanvasGroup ??=
+                GetOrAddCanvasGroup(containerGridUI.gameObject);
+            containerGridCanvasGroup.interactable = interactable;
+            containerGridCanvasGroup.blocksRaycasts = interactable;
+        }
+    }
+
+    private static CanvasGroup GetOrAddCanvasGroup(GameObject target)
+    {
+        CanvasGroup canvasGroup = target.GetComponent<CanvasGroup>();
+        return canvasGroup != null
+            ? canvasGroup
+            : target.AddComponent<CanvasGroup>();
     }
 
     private void EnsureDragLayer()

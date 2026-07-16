@@ -43,7 +43,11 @@ public class InventoryGridUI : MonoBehaviour
     private Vector2Int dragStartPosition;
     private bool dragStartRotation;
     private bool hasDetachedPlacement;
+    private bool isSplitDrag;
+    private InventoryPlacement splitSourcePlacement;
     private InventoryCellUI[,] cells;
+
+    public IGridInventory Inventory => inventory;
 
     public void Initialize(
         IGridInventory gridInventory,
@@ -83,10 +87,43 @@ public class InventoryGridUI : MonoBehaviour
 
     public void HandleDrop(
         InventoryItemUI itemUI,
-        PointerEventData eventData)
+        PointerEventData eventData,
+        bool controlDragRequested)
     {
-        if (itemUI == null || grid == null || !hasDetachedPlacement)
+        if (itemUI == null || grid == null)
         {
+            return;
+        }
+
+        if (isSplitDrag)
+        {
+            CompleteSplitDrag(itemUI, eventData);
+            return;
+        }
+
+        if (!hasDetachedPlacement)
+        {
+            return;
+        }
+
+        bool splitRotation = itemUI.Placement.IsRotated;
+
+        if (controlDragRequested &&
+            CanSplit(itemUI.Placement) &&
+            TryRestoreDetachedPlacement(itemUI.Placement))
+        {
+            InventoryPlacement sourcePlacement = itemUI.Placement;
+            Vector2 pointerOffset = itemUI.PointerOffset;
+            DiscardDragVisual(itemUI);
+            ResetDragState();
+            Refresh();
+            transferCoordinator?.TryOpenSplitDialog(
+                this,
+                sourcePlacement,
+                splitRotation,
+                pointerOffset,
+                eventData
+            );
             return;
         }
 
@@ -97,6 +134,15 @@ public class InventoryGridUI : MonoBehaviour
         {
             if (transferCoordinator != null &&
                 transferCoordinator.TryTransferItem(
+                    this,
+                    itemUI,
+                    eventData))
+            {
+                return;
+            }
+
+            if (transferCoordinator != null &&
+                transferCoordinator.TryDropItemIntoWorld(
                     this,
                     itemUI,
                     eventData))
@@ -166,6 +212,33 @@ public class InventoryGridUI : MonoBehaviour
         return true;
     }
 
+    public bool TryDropDetachedItemIntoWorld(
+        InventoryItemUI itemUI,
+        WorldItemDropper dropper)
+    {
+        if (!hasDetachedPlacement ||
+            draggedItemUI != itemUI ||
+            inventory == null)
+        {
+            return false;
+        }
+
+        if (!InventoryDropService.TryDropDetachedPlacement(
+            inventory,
+            itemUI.Placement,
+            dropper))
+        {
+            return false;
+        }
+
+        hasDetachedPlacement = false;
+        draggedItemUI = null;
+        hoveredPlacement = null;
+        DiscardDragVisual(itemUI);
+        Refresh();
+        return true;
+    }
+
     public void SetHoveredPlacement(
         InventoryPlacement placement,
         bool isHovered)
@@ -203,13 +276,28 @@ public class InventoryGridUI : MonoBehaviour
             gridPosition,
             placement.IsRotated
         );
+        InventoryPlacement mergeTarget = null;
+
+        if (!canPlace && itemUI.IsSplitDrag)
+        {
+            TryGetCompatibleMergeTarget(
+                eventData,
+                placement.Item,
+                out mergeTarget
+            );
+            canPlace = mergeTarget != null;
+        }
         Color previewColor = canPlace
             ? validPlacementColor
             : invalidPlacementColor;
 
         SetCellsColor(
-            gridPosition,
-            placement.GetCurrentSize(),
+            mergeTarget != null
+                ? mergeTarget.Position
+                : gridPosition,
+            mergeTarget != null
+                ? mergeTarget.GetCurrentSize()
+                : placement.GetCurrentSize(),
             previewColor,
             true
         );
@@ -273,6 +361,81 @@ public class InventoryGridUI : MonoBehaviour
         return true;
     }
 
+    public bool TryAdjustSplitAmount(
+        InventoryItemUI itemUI,
+        int direction,
+        out int amount)
+    {
+        amount = 0;
+
+        if (itemUI == null || draggedItemUI != itemUI)
+        {
+            return false;
+        }
+
+        if (!isSplitDrag)
+        {
+            if (!hasDetachedPlacement || !CanSplit(itemUI.Placement))
+            {
+                return false;
+            }
+
+            InventoryPlacement originalPlacement = itemUI.Placement;
+            bool draggedRotation = originalPlacement.IsRotated;
+
+            if (!TryRestoreDetachedPlacement(originalPlacement))
+            {
+                Debug.LogError(
+                    "Could not restore the source stack before split drag.",
+                    this
+                );
+                return false;
+            }
+
+            splitSourcePlacement = originalPlacement;
+            InventoryItem splitItem = new InventoryItem(
+                originalPlacement.Item.ItemData,
+                1
+            );
+            InventoryPlacement splitVisual = new InventoryPlacement(
+                splitItem,
+                dragStartPosition,
+                draggedRotation
+            );
+
+            itemUI.SetPlacement(splitVisual);
+            hasDetachedPlacement = false;
+            isSplitDrag = true;
+            RefreshCellColors();
+            amount = 1;
+            return true;
+        }
+
+        InventoryItem draggedStack = itemUI.Placement.Item;
+        int maxAmount = splitSourcePlacement.Item.Amount - 1;
+        int requestedAmount = Mathf.Clamp(
+            draggedStack.Amount + direction,
+            1,
+            maxAmount
+        );
+
+        if (requestedAmount > draggedStack.Amount)
+        {
+            draggedStack.TryAddAmount(
+                requestedAmount - draggedStack.Amount
+            );
+        }
+        else if (requestedAmount < draggedStack.Amount)
+        {
+            draggedStack.TryRemoveAmount(
+                draggedStack.Amount - requestedAmount
+            );
+        }
+
+        amount = draggedStack.Amount;
+        return true;
+    }
+
     public void RotateHoveredItem()
     {
         InventoryPlacement placement = draggedItemUI != null
@@ -284,7 +447,9 @@ public class InventoryGridUI : MonoBehaviour
             return;
         }
 
-        bool rotationSucceeded = draggedItemUI != null
+        bool rotationSucceeded = isSplitDrag
+            ? RotateSplitVisual(placement)
+            : draggedItemUI != null
             ? grid.RotateDetachedPlacement(placement)
             : grid.TryRotatePlacement(placement);
 
@@ -341,6 +506,14 @@ public class InventoryGridUI : MonoBehaviour
 
     private void OnDisable()
     {
+        if (isSplitDrag)
+        {
+            DiscardDragVisual(draggedItemUI);
+            ResetDragState();
+            Refresh();
+            return;
+        }
+
         if (hasDetachedPlacement && draggedItemUI != null)
         {
             RestoreDetachedPlacement(draggedItemUI.Placement);
@@ -355,12 +528,7 @@ public class InventoryGridUI : MonoBehaviour
             ReturnDraggedItemToItemsLayer(draggedItemUI);
         }
 
-        placement.SetPosition(dragStartPosition);
-        placement.SetRotation(dragStartRotation);
-
-        if (!grid.TryAttachDetachedPlacement(
-            placement,
-            dragStartPosition))
+        if (!TryRestoreDetachedPlacement(placement))
         {
             Debug.LogError(
                 $"Could not restore {placement.Item.ItemData.DisplayName} after a failed drag.",
@@ -368,9 +536,142 @@ public class InventoryGridUI : MonoBehaviour
             );
         }
 
-        hasDetachedPlacement = false;
-        draggedItemUI = null;
+        ResetDragState();
         Refresh();
+    }
+
+    private bool TryRestoreDetachedPlacement(
+        InventoryPlacement placement)
+    {
+        placement.SetPosition(dragStartPosition);
+        placement.SetRotation(dragStartRotation);
+        return grid.TryAttachDetachedPlacement(
+            placement,
+            dragStartPosition
+        );
+    }
+
+    public bool TryResolveSplitDestination(
+        InventoryItem splitItem,
+        bool isRotated,
+        PointerEventData eventData,
+        Vector2 pointerOffset,
+        out Vector2Int position,
+        out InventoryPlacement mergeTarget)
+    {
+        mergeTarget = null;
+
+        if (!TryGetGridPosition(eventData, pointerOffset, out position))
+        {
+            return false;
+        }
+
+        if (grid.CanPlaceItem(splitItem, position, isRotated))
+        {
+            return true;
+        }
+
+        return TryGetCompatibleMergeTarget(
+            eventData,
+            splitItem,
+            out mergeTarget
+        );
+    }
+
+    private bool TryGetCompatibleMergeTarget(
+        PointerEventData eventData,
+        InventoryItem splitItem,
+        out InventoryPlacement mergeTarget)
+    {
+        mergeTarget = null;
+
+        if (!TryGetPointerCell(eventData, out Vector2Int pointerCell))
+        {
+            return false;
+        }
+
+        InventoryPlacement target = grid.GetPlacementAt(pointerCell);
+
+        if (target?.Item?.ItemData == null ||
+            target.Item.ItemData.ItemId != splitItem.ItemData.ItemId ||
+            !target.Item.CanAddAmount(splitItem.Amount))
+        {
+            return false;
+        }
+
+        mergeTarget = target;
+        return true;
+    }
+
+    private bool TryGetPointerCell(
+        PointerEventData eventData,
+        out Vector2Int gridPosition)
+    {
+        gridPosition = default;
+
+        if (!RectTransformUtility.RectangleContainsScreenPoint(
+            itemsLayer,
+            eventData.position,
+            eventData.pressEventCamera) ||
+            !RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                itemsLayer,
+                eventData.position,
+                eventData.pressEventCamera,
+                out Vector2 localPointerPosition))
+        {
+            return false;
+        }
+
+        float step = cellSize + spacing;
+        gridPosition = new Vector2Int(
+            Mathf.FloorToInt(localPointerPosition.x / step),
+            Mathf.FloorToInt(-localPointerPosition.y / step)
+        );
+        return gridPosition.x >= 0 &&
+               gridPosition.y >= 0 &&
+               gridPosition.x < grid.Width &&
+               gridPosition.y < grid.Height;
+    }
+
+    private void CompleteSplitDrag(
+        InventoryItemUI itemUI,
+        PointerEventData eventData)
+    {
+        if (transferCoordinator != null)
+        {
+            transferCoordinator.TryCommitSplit(
+                this,
+                splitSourcePlacement,
+                itemUI.Placement,
+                itemUI.PointerOffset,
+                eventData
+            );
+        }
+
+        DiscardDragVisual(itemUI);
+        ResetDragState();
+        Refresh();
+    }
+
+    private bool CanSplit(InventoryPlacement placement)
+    {
+        return placement?.Item?.ItemData != null &&
+               placement.Item.ItemData.MaxStack > 1 &&
+               placement.Item.Amount > 1;
+    }
+
+    private static bool RotateSplitVisual(InventoryPlacement placement)
+    {
+        placement.SetRotation(!placement.IsRotated);
+        return true;
+    }
+
+    private void ResetDragState()
+    {
+        hasDetachedPlacement = false;
+        isSplitDrag = false;
+        splitSourcePlacement = null;
+        draggedItemUI = null;
     }
 
     private void ReturnDraggedItemToItemsLayer(
@@ -378,6 +679,17 @@ public class InventoryGridUI : MonoBehaviour
     {
         itemUI.transform.SetParent(itemsLayer, false);
         itemUI.transform.SetAsLastSibling();
+    }
+
+    private static void DiscardDragVisual(InventoryItemUI itemUI)
+    {
+        if (itemUI == null)
+        {
+            return;
+        }
+
+        itemUI.gameObject.SetActive(false);
+        Destroy(itemUI.gameObject);
     }
 
     private void CreateCells()

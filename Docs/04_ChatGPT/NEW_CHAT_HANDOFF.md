@@ -88,12 +88,15 @@ Implemented:
 - the bedside cabinet `LeftShelf` and `LeftDoor` own separate container inventories, and UI close returns the active mechanism to its closed state.
 - generic world storage uses `ContainerInteractable`; Animator triggers, separate open/close sounds and Inspector events are optional, so static containers need no presentation setup.
 - each storage compartment keeps its `ContainerInventory` on the same GameObject as its `Drawer`, `Door` or `ContainerInteractable`, exposing metadata and grid size in one Inspector selection.
+- a full dragged stack dropped outside the inventory window becomes a `WorldItem` while retaining its exact `InventoryItem` instance;
+- stack splitting works by mouse wheel during drag and by `Ctrl` + drag with a modal amount dialog;
+- partial stacks can be placed, transferred, merged only when the complete amount fits, or dropped into the world through transactional services.
 
 Immediate next steps:
 
-1. perform the final Play Mode pass for `LeftShelf`/`LeftDoor` interaction angles, pickup, full-inventory rejection, drag rollback and rotation;
+1. perform the final Play Mode pass for pickup, full/partial drop, wheel split, Ctrl dialog, cancellation and player/container transfer;
 2. add distance-based container auto-close and define the future server validation request;
-3. implement dropping an item back into the world.
+3. add the contraband marker and refine item-specific world physics as art becomes available.
 
 ## Documentation responsibility
 

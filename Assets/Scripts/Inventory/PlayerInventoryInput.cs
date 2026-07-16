@@ -17,6 +17,7 @@ public class PlayerInventoryInput : MonoBehaviour
         }
 
         if (isInventoryOpen &&
+            !inventoryUI.HasOpenModal &&
             playerInputHandler.RotateInventoryItemPressedThisFrame())
         {
             inventoryUI.RotateHoveredItem();
@@ -25,6 +26,11 @@ public class PlayerInventoryInput : MonoBehaviour
 
     private void ToggleInventory()
     {
+        if (inventoryUI.TryCancelModal())
+        {
+            return;
+        }
+
         if (isInventoryOpen)
         {
             inventoryUI.Close();

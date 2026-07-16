@@ -20,13 +20,13 @@
 - [x] Finish WorldItem instance handling
 - [x] Icons
 - [x] Amount display
-- [ ] Category background
+- [x] Category background
 - [ ] Contraband marker
 - [x] Grid sizes
 - [x] Drag and drop
 - [x] Rotation
-- [ ] Stack splitting
-- [ ] Drop into world
+- [x] Stack splitting by wheel drag and Ctrl dialog
+- [x] Full and partial stack drop into world
 
 ## Containers
 - [x] ContainerInventory

@@ -72,6 +72,12 @@ Physical interaction components. They animate the moving part and can optionally
 ### InventoryTransferService
 Commits an atomic transfer of a detached placement from a verified source grid to a validated destination grid. This local service is the seam that a future authoritative server command will replace.
 
+### InventoryStackService
+Owns the business rules for partial stacks. It validates the live source placement, amount range, target capacity and destination placement before committing `TrySplitWithinInventory`, `TrySplitAndTransfer` or `TryMergeStack`. A failed operation leaves both inventories unchanged. The UI never writes `Amount` directly.
+
+### InventoryDropService and WorldItemDropper
+`InventoryDropService` commits the inventory transaction. A full-stack drop passes the same concrete `InventoryItem` instance to the world and only discards its detached placement after the spawn succeeds. A partial drop creates one new instance for the selected amount and reduces the source only after spawning succeeds. `WorldItemDropper` owns prefab instantiation and safe position calculation in front of the exact player; neither grid UI nor the item model searches for a player.
+
 ### InventoryGrid
 Owns placements and validates bounds, overlap, movement and rotation. During drag it supports detach/attach as a transaction so the held item can rotate independently of its old grid position. It does not process input or render UI.
 
@@ -79,22 +85,40 @@ Owns placements and validates bounds, overlap, movement and rotation. During dra
 Connects one `InventoryItem` instance to a grid position and orientation.
 
 ### ItemData
-ScriptableObject describing an item type.
+ScriptableObject describing an item type, including its world prefab. The reference is type-safe (`WorldItem`), so an unrelated prefab cannot be assigned.
 
 ### InventoryItem
-Concrete item instance or stack.
+Concrete item instance or stack. Its guarded amount methods prevent a live stack from going below one or above `ItemData.MaxStack`.
 
 ### WorldItem
-World representation of a concrete instance.
+World representation of a concrete instance. A scene-authored item creates its instance during startup; a dropped item receives the already existing instance through `Initialize`, preserving amount and future instance data. Successful pickup moves that same instance into the inventory and destroys only the world representation.
 
 ### InventoryUI
-Opens and closes inventory windows, subscribes to inventory changes and connects models to `InventoryGridUI`. Container mode displays the container grid on the left and player grid on the right. A shared topmost `DragLayer` keeps the temporary dragged visual above both panels without owning gameplay state.
+Opens and closes inventory windows, subscribes to inventory changes and connects models to `InventoryGridUI`. Container mode displays the container grid on the left and player grid on the right. A shared topmost `DragLayer` keeps the temporary dragged visual above both panels without owning gameplay state. It coordinates cross-grid split destinations, world-drop boundaries and the single modal `StackSplitDialog`.
 
 ### InventoryGridUI
-Displays cells and placements. Converts pointer positions to grid positions, but delegates placement validation to `InventoryGrid`. Its Inspector palette maps `ItemCategory` values to occupied-cell colors. During drag it asks the same `InventoryGrid.CanPlaceItem` rule used by drop and temporarily overrides the target cells with valid or invalid preview colors.
+Displays cells and placements. Converts pointer positions to grid positions, but delegates placement validation to `InventoryGrid`. Its Inspector palette maps `ItemCategory` values to occupied-cell colors. During drag it asks the same `InventoryGrid.CanPlaceItem` rule used by drop and temporarily overrides the target cells with valid or invalid preview colors. On the first wheel step it restores the detached source unchanged and turns the held visual into a temporary split preview; model state changes only on a successful drop.
 
 ### InventoryItemUI
-Displays one placement and reports pointer hover and drag/drop gestures to `InventoryGridUI`. Name and amount are presentation-only and hidden while dragging, leaving the centred icon unobstructed. Rotation input comes from `PlayerInputHandler`; `R` rotates the hovered placement and immediately refreshes the cell preview.
+Displays one placement and reports pointer hover, drag/drop, wheel and Ctrl gestures to `InventoryGridUI`. Name and amount are presentation-only and hidden while dragging, except for the selected `xN` during split drag. Rotation input comes from `PlayerInputHandler`; `R` rotates the hovered placement and immediately refreshes the cell preview.
+
+## Drop and split transactions
+
+```text
+full drag outside window
+→ InventoryGridUI keeps source placement detached
+→ InventoryDropService asks WorldItemDropper to spawn
+→ spawned WorldItem receives the same InventoryItem
+→ only then is the detached placement discarded
+
+partial drag / dialog Apply
+→ InventoryStackService revalidates source and destination
+→ destination stack or WorldItem is created first
+→ source amount is reduced second
+→ Changed refreshes every affected grid
+```
+
+The area outside `InventoryRoot` is the deliberate world-drop zone. Empty space inside that root, including the gap between two grids, cancels and restores a full drag.
 
 ### PlayerInteractor
 Finds `IInteractable` and calls `Interact(this)`.

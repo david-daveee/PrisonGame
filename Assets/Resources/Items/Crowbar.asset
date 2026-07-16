@@ -18,3 +18,4 @@ MonoBehaviour:
   Category: 0
   Size: {x: 1, y: 3}
   MaxStack: 1
+  worldPrefab: {fileID: 455789503164471703, guid: e772acfa25f3edc468e8f855d78079d2, type: 3}

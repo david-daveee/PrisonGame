@@ -193,6 +193,21 @@ public class InventoryGrid
         return true;
     }
 
+    public bool ContainsPlacement(InventoryPlacement placement)
+    {
+        return placement != null && placements.Contains(placement);
+    }
+
+    public bool ContainsDetachedPlacement(InventoryPlacement placement)
+    {
+        return placement != null && detachedPlacements.Contains(placement);
+    }
+
+    public bool DiscardDetachedPlacement(InventoryPlacement placement)
+    {
+        return placement != null && detachedPlacements.Remove(placement);
+    }
+
     public bool RotateDetachedPlacement(
         InventoryPlacement placement)
     {

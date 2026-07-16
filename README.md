@@ -16,6 +16,8 @@ Implemented:
 - drag and drop, invalid-drop rollback and `R` rotation;
 - padded transparent item icons, bottom item names, stack amounts and Inspector-configurable category colors;
 - Tarkov-style green/red occupied-cell preview while dragging, with labels hidden until drop;
+- dropping a full stack outside the inventory window back into the world without replacing its `InventoryItem` instance;
+- stack splitting by mouse wheel during drag or by a `Ctrl` + drag amount dialog;
 - two-panel player/container UI;
 - bidirectional atomic item transfer;
 - independent inventories for separate cabinet compartments;
@@ -25,9 +27,8 @@ Implemented:
 
 Current focus:
 
-- final Play Mode validation of the complete container loop;
-- dropping inventory items back into the world;
-- stack splitting and contraband markers;
+- final Play Mode validation of the complete pickup/drop/split/container loop;
+- contraband markers;
 - distance-based container closing;
 - defining multiplayer validation requests.
 
@@ -36,7 +37,17 @@ Current focus:
 - `E` — interact with a world item, door, drawer or container;
 - `Tab` — open or close inventory UI;
 - hold left mouse button — drag an inventory item;
+- mouse wheel while dragging a stack — choose a partial amount;
+- `Ctrl` + drag a stack — open the amount dialog after choosing a destination;
 - `R` — rotate the hovered or currently dragged item.
+
+Dropping outside the dark inventory window places the held item in front of the player. Dropping in the gap between grids is treated as a cancelled move, so an accidental release cannot throw the item away.
+
+## Item authoring
+
+Every `ItemData` asset must reference a `World Prefab` before that item can be dropped. Book, Cigarettes, Crowbar, Screwdriver and Soap now use separate 3D prefabs built from their FBX models. A new prefab must keep `WorldItem` and an interaction collider on its root.
+
+The player owns `WorldItemDropper`. Its `Drop Point` should be the camera or a child transform facing forward; `Forward Distance`, `Floor Offset`, `Ground Probe Distance`, `Ground Layers` and `Blocking Layers` control safe placement. A forward ray prevents choosing a point behind a wall, a downward ray finds the surface, and the real lower collider/renderer bound is aligned to it. Collider penetration is resolved horizontally before the transaction commits. If no surface or free volume is found, the drop is cancelled and the inventory item is restored. `InventoryUI` references that dropper and the `StackSplitDialog` prefab.
 
 ## Container authoring
 

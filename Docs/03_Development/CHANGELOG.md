@@ -19,12 +19,17 @@ The project currently has no formal public release.
 - inventory foundation;
 - Unity Input System;
 - UI Mode;
-- initial stack model.
+- grid inventory with size, rotation and cross-container transfer;
+- item category colors and valid/invalid placement feedback;
+- atomic pickup and drop into world;
+- stack splitting by wheel drag and Ctrl amount dialog.
 
 ### Changed
 
 - interactions now receive the exact `PlayerInteractor`;
-- inventory is migrating from `ItemData` to `InventoryItem`.
+- inventories store concrete `InventoryItem` instances backed by `ItemData`;
+- full world transitions preserve the same item instance;
+- partial stack operations are validated by model-level transaction services.
 
 ### Fixed
 

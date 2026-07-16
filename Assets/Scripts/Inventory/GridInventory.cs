@@ -79,7 +79,16 @@ public class GridInventory : IGridInventory
                 amountForExistingStacks
             );
 
-            existingItem.AddAmount(amountToAdd);
+            if (!existingItem.TryAddAmount(amountToAdd))
+            {
+                foreach (InventoryItem addedStack in addedStacks)
+                {
+                    Grid.RemoveItem(addedStack);
+                }
+
+                return false;
+            }
+
             amountForExistingStacks -= amountToAdd;
 
             if (amountForExistingStacks == 0)
