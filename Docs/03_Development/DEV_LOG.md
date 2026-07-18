@@ -46,6 +46,7 @@
 - Added mouse-wheel split drag with a temporary amount preview, rotation, target-cell feedback and complete cancellation safety.
 - Added `Ctrl` + drag splitting through a reusable slider/input dialog that revalidates the remembered destination on Apply.
 - Added partial-stack world dropping and editor tests for amount conservation, occupied destinations, cross-inventory splitting, full merge targets and `MaxStack = 1`.
+- Added full-stack merging through ordinary drag inside one grid and across player/container grids, with green/red capacity preview and atomic detached-placement finalization.
 
 ### Current limitations
 

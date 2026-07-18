@@ -158,6 +158,11 @@ public class InventoryGridUI : MonoBehaviour
             itemUI.Placement,
             gridPosition))
         {
+            if (TryMergeDetachedItemIntoThisGrid(itemUI, eventData))
+            {
+                return;
+            }
+
             RestoreDetachedPlacement(itemUI.Placement);
             return;
         }
@@ -189,6 +194,32 @@ public class InventoryGridUI : MonoBehaviour
             out Vector2Int destinationPosition))
         {
             return false;
+        }
+
+        if (!destination.grid.CanPlaceItem(
+            itemUI.Placement.Item,
+            destinationPosition,
+            itemUI.Placement.IsRotated))
+        {
+            if (!destination.TryGetCompatibleMergeTarget(
+                    eventData,
+                    itemUI.Placement.Item,
+                    out InventoryPlacement mergeTarget) ||
+                !InventoryStackService.TryMergeDetachedStack(
+                    inventory,
+                    itemUI.Placement,
+                    destination.inventory,
+                    mergeTarget))
+            {
+                return false;
+            }
+
+            hasDetachedPlacement = false;
+            draggedItemUI = null;
+            hoveredPlacement = null;
+            DiscardDragVisual(itemUI);
+            Refresh();
+            return true;
         }
 
         hasDetachedPlacement = false;
@@ -278,7 +309,7 @@ public class InventoryGridUI : MonoBehaviour
         );
         InventoryPlacement mergeTarget = null;
 
-        if (!canPlace && itemUI.IsSplitDrag)
+        if (!canPlace)
         {
             TryGetCompatibleMergeTarget(
                 eventData,
@@ -576,6 +607,31 @@ public class InventoryGridUI : MonoBehaviour
             splitItem,
             out mergeTarget
         );
+    }
+
+    private bool TryMergeDetachedItemIntoThisGrid(
+        InventoryItemUI itemUI,
+        PointerEventData eventData)
+    {
+        if (!TryGetCompatibleMergeTarget(
+                eventData,
+                itemUI.Placement.Item,
+                out InventoryPlacement mergeTarget) ||
+            !InventoryStackService.TryMergeDetachedStack(
+                inventory,
+                itemUI.Placement,
+                inventory,
+                mergeTarget))
+        {
+            return false;
+        }
+
+        hasDetachedPlacement = false;
+        draggedItemUI = null;
+        hoveredPlacement = null;
+        DiscardDragVisual(itemUI);
+        Refresh();
+        return true;
     }
 
     private bool TryGetCompatibleMergeTarget(

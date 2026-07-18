@@ -2,6 +2,47 @@ using UnityEngine;
 
 public static class InventoryStackService
 {
+    public static bool TryMergeDetachedStack(
+        IGridInventory source,
+        InventoryPlacement sourcePlacement,
+        IGridInventory destination,
+        InventoryPlacement targetPlacement)
+    {
+        if (source == null ||
+            destination == null ||
+            sourcePlacement?.Item?.ItemData == null ||
+            targetPlacement?.Item?.ItemData == null ||
+            sourcePlacement == targetPlacement ||
+            !source.Grid.ContainsDetachedPlacement(sourcePlacement) ||
+            !destination.Grid.ContainsPlacement(targetPlacement) ||
+            targetPlacement.Item.ItemData.ItemId !=
+                sourcePlacement.Item.ItemData.ItemId ||
+            !targetPlacement.Item.CanAddAmount(sourcePlacement.Item.Amount))
+        {
+            return false;
+        }
+
+        int transferredAmount = sourcePlacement.Item.Amount;
+
+        if (!targetPlacement.Item.TryAddAmount(transferredAmount))
+        {
+            return false;
+        }
+
+        if (!source.Grid.DiscardDetachedPlacement(sourcePlacement))
+        {
+            targetPlacement.Item.TryRemoveAmount(transferredAmount);
+            Debug.LogError(
+                "Detached stack merge could not finalize its source and " +
+                "was rolled back."
+            );
+            return false;
+        }
+
+        NotifyChanged(source, destination);
+        return true;
+    }
+
     public static bool CanSplit(
         IGridInventory source,
         InventoryPlacement sourcePlacement)

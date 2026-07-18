@@ -73,7 +73,7 @@ Physical interaction components. They animate the moving part and can optionally
 Commits an atomic transfer of a detached placement from a verified source grid to a validated destination grid. This local service is the seam that a future authoritative server command will replace.
 
 ### InventoryStackService
-Owns the business rules for partial stacks. It validates the live source placement, amount range, target capacity and destination placement before committing `TrySplitWithinInventory`, `TrySplitAndTransfer` or `TryMergeStack`. A failed operation leaves both inventories unchanged. The UI never writes `Amount` directly.
+Owns the business rules for full and partial stacks. It validates the live source placement, amount range, target capacity and destination placement before committing `TrySplitWithinInventory`, `TrySplitAndTransfer`, `TryMergeStack` or `TryMergeDetachedStack`. The detached variant is used by ordinary drag and finalizes source ownership only after the destination accepts the entire stack. A failed operation leaves both inventories unchanged. The UI never writes `Amount` directly.
 
 ### InventoryDropService and WorldItemDropper
 `InventoryDropService` commits the inventory transaction. A full-stack drop passes the same concrete `InventoryItem` instance to the world and only discards its detached placement after the spawn succeeds. A partial drop creates one new instance for the selected amount and reduces the source only after spawning succeeds. `WorldItemDropper` owns prefab instantiation and safe position calculation in front of the exact player; neither grid UI nor the item model searches for a player.

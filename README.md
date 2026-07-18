@@ -18,6 +18,7 @@ Implemented:
 - Tarkov-style green/red occupied-cell preview while dragging, with labels hidden until drop;
 - dropping a full stack outside the inventory window back into the world without replacing its `InventoryItem` instance;
 - stack splitting by mouse wheel during drag or by a `Ctrl` + drag amount dialog;
+- full-stack merging by dragging one compatible stack onto another when the complete amount fits;
 - two-panel player/container UI;
 - bidirectional atomic item transfer;
 - independent inventories for separate cabinet compartments;

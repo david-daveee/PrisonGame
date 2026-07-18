@@ -167,6 +167,85 @@ public class InventoryStackServiceTests
     }
 
     [Test]
+    public void DetachedFullStackMerge_PreservesTotalAndFinalizesSource()
+    {
+        GridInventory sourceInventory = new GridInventory("Source", 1, 1);
+        GridInventory destinationInventory =
+            new GridInventory("Destination", 1, 1);
+        InventoryItem sourceItem = new InventoryItem(stackableItem, 4);
+        InventoryItem targetItem = new InventoryItem(stackableItem, 10);
+        Assert.That(
+            sourceInventory.Grid.TryPlaceItem(sourceItem, Vector2Int.zero)
+        );
+        Assert.That(
+            destinationInventory.Grid.TryPlaceItem(
+                targetItem,
+                Vector2Int.zero
+            )
+        );
+        InventoryPlacement sourcePlacement =
+            sourceInventory.Grid.GetPlacementAt(Vector2Int.zero);
+        Assert.That(
+            sourceInventory.Grid.TryDetachPlacementForMove(sourcePlacement)
+        );
+
+        bool result = InventoryStackService.TryMergeDetachedStack(
+            sourceInventory,
+            sourcePlacement,
+            destinationInventory,
+            destinationInventory.Grid.GetPlacementAt(Vector2Int.zero)
+        );
+
+        Assert.That(result, Is.True);
+        Assert.That(targetItem.Amount, Is.EqualTo(14));
+        Assert.That(
+            sourceInventory.Grid.ContainsDetachedPlacement(sourcePlacement),
+            Is.False
+        );
+        Assert.That(sourceInventory.Grid.Placements, Is.Empty);
+        Assert.That(GetTotalAmount(destinationInventory), Is.EqualTo(14));
+    }
+
+    [Test]
+    public void DetachedMergeIntoFullStack_IsRejectedWithoutDataLoss()
+    {
+        GridInventory sourceInventory = new GridInventory("Source", 1, 1);
+        GridInventory destinationInventory =
+            new GridInventory("Destination", 1, 1);
+        InventoryItem sourceItem = new InventoryItem(stackableItem, 4);
+        InventoryItem targetItem = new InventoryItem(stackableItem, 15);
+        Assert.That(
+            sourceInventory.Grid.TryPlaceItem(sourceItem, Vector2Int.zero)
+        );
+        Assert.That(
+            destinationInventory.Grid.TryPlaceItem(
+                targetItem,
+                Vector2Int.zero
+            )
+        );
+        InventoryPlacement sourcePlacement =
+            sourceInventory.Grid.GetPlacementAt(Vector2Int.zero);
+        Assert.That(
+            sourceInventory.Grid.TryDetachPlacementForMove(sourcePlacement)
+        );
+
+        bool result = InventoryStackService.TryMergeDetachedStack(
+            sourceInventory,
+            sourcePlacement,
+            destinationInventory,
+            destinationInventory.Grid.GetPlacementAt(Vector2Int.zero)
+        );
+
+        Assert.That(result, Is.False);
+        Assert.That(sourceItem.Amount, Is.EqualTo(4));
+        Assert.That(targetItem.Amount, Is.EqualTo(15));
+        Assert.That(
+            sourceInventory.Grid.ContainsDetachedPlacement(sourcePlacement),
+            Is.True
+        );
+    }
+
+    [Test]
     public void SplittingEntireStack_IsRejected()
     {
         GridInventory inventory = new GridInventory("Test", 2, 1);
