@@ -1,5 +1,37 @@
 # Dev Log
 
+## 2026-07-23
+
+### Completed
+
+- Imported the modular prisoner character source assets under `Assets/FBXs/CharacterAppearance`.
+- Imported the character base rig, idle and walking animations and configured `PlayerAnimator.controller`.
+- Added `CharacterAppearance` with Inspector-selectable character, outfit, hair, beard and eyebrow variants.
+- Preserved extension slots for pants, shoes, head accessories and neck accessories so real fitted meshes can be connected later without changing the public API.
+- Connected the modular character sets in `Main.unity`.
+- Fixed character sets that share one root: selecting one set no longer disables that common root.
+- Defined appearance index `0` as the first configured variant and retained the original five-argument `SetAppearance` API for existing UI/network code.
+- Moved runtime appearance application to `Start` and kept `OnValidate` side-effect free, avoiding Unity `SendMessage` and `MarkSceneDirty` errors.
+- Removed the temporary generated primitive clothes/accessories and their materials. Appearance now only controls authored character assets.
+
+### Authoring rule
+
+Do not generate replacement geometry from renderer bounds. New pants, shoes and accessories must be authored/fitted meshes, placed in the character hierarchy and explicitly assigned to the corresponding `CharacterSet` arrays.
+
+### Verification
+
+- `Assembly-CSharp` builds successfully.
+- `Assembly-CSharp-Editor` builds successfully.
+- `Main.unity` contains no `[Generated]` placeholder objects.
+
+## 2026-07-18
+
+### Completed
+
+- Replaced the legacy Mirror IMGUI HUD with Mirror's Canvas-based debug network menu.
+- Added startup UI-state coordination: movement, camera and interaction are blocked until Host, Client or Server is selected.
+- Added `F1` toggling for the debug network menu and placed its Canvas above the gameplay UI.
+
 ## 2026-07-15
 
 ### Completed

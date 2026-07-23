@@ -181,6 +181,8 @@ Inventory = storage and rules for instances
 
 ## Multiplayer authority
 
+The current Mirror integration uses the package's Canvas-based debug HUD instead of the legacy IMGUI `NetworkManagerHUD`. `NetworkStartupUIController` opens it before a network mode is selected, enters UI mode so the cursor is usable, and hides it after Host, Client or Server starts. `F1` toggles the debug menu. This is development tooling, not the final lobby UI.
+
 Local-only:
 
 - input;
@@ -208,6 +210,31 @@ Client requests action
 → Clients receive synchronized state
 → UI refreshes
 ```
+
+## Modular character appearance
+
+Character source meshes live under `Assets/FBXs/CharacterAppearance`, while the shared rig animations and `PlayerAnimator.controller` live under `Assets/Animations/Character`.
+
+`CharacterAppearance` owns an ordered array of `CharacterSet` definitions. Each set references its character root and authored GameObjects for outfit, pants, shoes, hair, beard, eyebrows, head accessories and neck accessories.
+
+An ID of `0` selects the first configured object in that category. Empty arrays are valid and mean that the category is not currently authored. The component never creates visual geometry.
+
+Several appearance sets may intentionally share one character root when one imported hierarchy contains multiple fitted body variants. Root activation is therefore based on reference equality with the selected set's root, not solely on the set array index. All category variants are disabled first, then only the selected set's variants are enabled.
+
+Runtime initialization happens in `Start`. `OnValidate` only clamps serialized IDs because calling `GameObject.SetActive` during Unity validation can trigger forbidden visibility messages. Inspector changes are applied by the custom editor after serialized-property validation has completed. Scene rebuilding and dirty-state operations are unavailable during Play Mode.
+
+Authoring hierarchy:
+
+```text
+Character root
+├── authored outfit variants
+├── authored hair variants
+├── authored beard variants
+├── authored eyebrow variants
+└── optional fitted pants / shoes / accessories
+```
+
+New wearable content must be fitted to the character rig in the source DCC/FBX workflow and explicitly assigned in `CharacterSet`. Bounds-based cubes, spheres or other generated stand-ins are not part of the architecture.
 
 ## Intentionally postponed
 

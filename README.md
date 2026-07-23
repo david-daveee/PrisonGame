@@ -25,6 +25,8 @@ Implemented:
 - reusable static or animated containers with optional audio;
 - UI mode that blocks player control while a large window is open;
 - architecture seams for future server-authoritative multiplayer.
+- Mirror debug startup menu with Host, Client and Server modes.
+- modular prisoner character prefab with selectable outfit, hair, beard and eyebrow variants.
 
 Current focus:
 
@@ -41,6 +43,7 @@ Current focus:
 - mouse wheel while dragging a stack — choose a partial amount;
 - `Ctrl` + drag a stack — open the amount dialog after choosing a destination;
 - `R` — rotate the hovered or currently dragged item.
+- `F1` — reopen or hide the Mirror debug network menu.
 
 Dropping outside the dark inventory window places the held item in front of the player. Dropping in the gap between grids is treated as a cancelled move, so an accidental release cannot throw the item away.
 
